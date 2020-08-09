@@ -1,0 +1,36 @@
+task:
+  name: FreeBSD $FREEBSD_VERSION ($TOOLCHAIN)
+
+  freebsd_instance:
+    cpu: 1
+    image_family: $FREEBSD_IMAGE
+
+  matrix:
+    - env:
+        FREEBSD_VERSION: 12.1
+        FREEBSD_IMAGE: freebsd-12-1
+    - env:
+        FREEBSD_VERSION: 12.1 STABLE
+        FREEBSD_IMAGE: freebsd-12-1-snap
+    # - env:
+    #     FREEBSD_VERSION: 13.0
+    #     FREEBSD_IMAGE: freebsd-13-0-snap
+
+  matrix:
+    - env:
+        TOOLCHAIN: stable
+    - env:
+        TOOLCHAIN: beta
+    - env:
+        TOOLCHAIN: nightly
+
+  install_script:
+    - pkg install -y curl
+    - curl -sSf https://sh.rustup.rs -o rustup.sh
+    - sh rustup.sh -y --profile default --default-toolchain $TOOLCHAIN
+  build_script:
+    - . $HOME/.cargo/env
+    - cargo build
+  test_script:
+    - . $HOME/.cargo/env
+    - cargo test
