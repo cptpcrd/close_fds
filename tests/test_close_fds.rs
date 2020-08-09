@@ -90,7 +90,10 @@ fn iter_possible_fds_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
 }
 
 fn close_fds_test(fd1: RawFd, fd2: RawFd, _fd3: RawFd) {
-    assert_eq!(close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(), [fd1, fd2]);
+    assert_eq!(
+        close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(),
+        [fd1, fd2]
+    );
 
     unsafe {
         close_fds::close_open_fds(fd1, &[]);
@@ -100,7 +103,10 @@ fn close_fds_test(fd1: RawFd, fd2: RawFd, _fd3: RawFd) {
 }
 
 fn close_fds_keep1_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
-    assert_eq!(close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(), [fd1, fd2]);
+    assert_eq!(
+        close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(),
+        [fd1, fd2]
+    );
 
     unsafe {
         close_fds::close_open_fds(fd1, &[fd1, fd3]);
@@ -110,7 +116,10 @@ fn close_fds_keep1_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
 }
 
 fn close_fds_keep2_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
-    assert_eq!(close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(), [fd1, fd2]);
+    assert_eq!(
+        close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(),
+        [fd1, fd2]
+    );
 
     unsafe {
         close_fds::close_open_fds(fd1, &[fd2, fd3]);
