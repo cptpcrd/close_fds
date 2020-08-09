@@ -89,43 +89,58 @@ fn iter_possible_fds_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
     assert!(!fds.contains(&fd2));
 }
 
-fn close_fds_test(fd1: RawFd, fd2: RawFd, _fd3: RawFd) {
-    assert_eq!(
-        close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(),
-        [fd1, fd2]
-    );
+fn close_fds_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
+    let mut fds: Vec<RawFd>;
+
+    fds = close_fds::iter_open_fds(fd1).collect();
+    assert!(fds.contains(&fd1));
+    assert!(fds.contains(&fd2));
+    assert!(!fds.contains(&fd3));
 
     unsafe {
         close_fds::close_open_fds(fd1, &[]);
     }
 
-    assert_eq!(close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(), []);
+    fds = close_fds::iter_open_fds(fd1).collect();
+    assert!(!fds.contains(&fd1));
+    assert!(!fds.contains(&fd2));
+    assert!(!fds.contains(&fd3));
 }
 
 fn close_fds_keep1_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
-    assert_eq!(
-        close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(),
-        [fd1, fd2]
-    );
+    let mut fds: Vec<RawFd>;
+
+    fds = close_fds::iter_open_fds(fd1).collect();
+    assert!(fds.contains(&fd1));
+    assert!(fds.contains(&fd2));
+    assert!(!fds.contains(&fd3));
 
     unsafe {
         close_fds::close_open_fds(fd1, &[fd1, fd3]);
     }
 
-    assert_eq!(close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(), [fd1]);
+    fds = close_fds::iter_open_fds(fd1).collect();
+    assert!(fds.contains(&fd1));
+    assert!(!fds.contains(&fd2));
+    assert!(!fds.contains(&fd3));
 }
 
 fn close_fds_keep2_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
-    assert_eq!(
-        close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(),
-        [fd1, fd2]
-    );
+    let mut fds: Vec<RawFd>;
+
+    fds = close_fds::iter_open_fds(fd1).collect();
+    assert!(fds.contains(&fd1));
+    assert!(fds.contains(&fd2));
+    assert!(!fds.contains(&fd3));
 
     unsafe {
         close_fds::close_open_fds(fd1, &[fd2, fd3]);
     }
 
-    assert_eq!(close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(), [fd2]);
+    fds = close_fds::iter_open_fds(fd1).collect();
+    assert!(!fds.contains(&fd1));
+    assert!(fds.contains(&fd2));
+    assert!(!fds.contains(&fd3));
 }
 
 #[test]
