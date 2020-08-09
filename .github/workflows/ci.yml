@@ -111,7 +111,7 @@ jobs:
           args: cargo-tarpaulin
 
       - name: Unmount /proc
-        run: umount /proc
+        run: sudo umount /proc
         if: matrix.unmount-procfs
 
       - name: Run tarpaulin
@@ -165,7 +165,7 @@ jobs:
           target: ${{ matrix.target }}
 
       - name: Unmount /proc
-        run: umount /proc
+        run: sudo umount /proc
         if: matrix.unmount-procfs
 
       - name: Run tests
