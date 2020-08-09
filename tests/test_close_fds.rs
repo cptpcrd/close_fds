@@ -28,19 +28,36 @@ fn iter_open_fds_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
 
     fds = close_fds::iter_open_fds(-1).collect();
     assert!(!fds.contains(&-1));
+    assert!(fds.contains(&0));
     assert!(fds.contains(&fd1));
     assert!(fds.contains(&fd2));
     assert!(!fds.contains(&fd3));
 
     fds = close_fds::iter_open_fds(0).collect();
+    assert!(fds.contains(&0));
     assert!(fds.contains(&fd1));
     assert!(fds.contains(&fd2));
     assert!(!fds.contains(&fd3));
 
     // Test handling of minfd
-    assert_eq!(close_fds::iter_open_fds(fd1).collect::<Vec<RawFd>>(), [fd1, fd2]);
-    assert_eq!(close_fds::iter_open_fds(fd2).collect::<Vec<RawFd>>(), [fd2]);
-    assert_eq!(close_fds::iter_open_fds(fd3).collect::<Vec<RawFd>>(), []);
+
+    fds = close_fds::iter_open_fds(fd1).collect();
+    assert!(!fds.contains(&0));
+    assert!(fds.contains(&fd1));
+    assert!(fds.contains(&fd2));
+    assert!(!fds.contains(&fd3));
+
+    fds = close_fds::iter_open_fds(fd2).collect();
+    assert!(!fds.contains(&0));
+    assert!(!fds.contains(&fd1));
+    assert!(fds.contains(&fd2));
+    assert!(!fds.contains(&fd3));
+
+    fds = close_fds::iter_open_fds(fd3).collect();
+    assert!(!fds.contains(&0));
+    assert!(!fds.contains(&fd1));
+    assert!(!fds.contains(&fd2));
+    assert!(!fds.contains(&fd3));
 }
 
 fn iter_possible_fds_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
