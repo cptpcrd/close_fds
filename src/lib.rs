@@ -295,6 +295,9 @@ impl FdIter {
 
     #[cfg(target_os = "freebsd")]
     fn nfds_to_maxfd(nfds: libc::c_int) -> Option<libc::c_int> {
+        // Given the number of open file descriptors, return the largest
+        // open file descriptor (or None if it can't be reasonably determined).
+
         if nfds == 0 {
             // No open file descriptors -- nothing to do!
             return Some(0);
@@ -312,10 +315,13 @@ impl FdIter {
 
         for fd in 0..(nfds * 3) {
             if unsafe { libc::fcntl(fd, libc::F_GETFD) } >= 0 {
+                // Valid file descriptor
                 nfds_found += 1;
 
                 if nfds_found >= nfds {
-                    // We found the largest open file descriptor
+                    // We've found all the open file descriptors.
+                    // We now know that the current `fd` is the largest open
+                    // file descriptor
                     return Some(fd);
                 }
             }
@@ -383,8 +389,11 @@ impl FdIter {
             #[allow(clippy::cast_ptr_alignment)] // We trust the kernel not to make us segfault
             let entry =
                 unsafe { &*(self.dirents.as_ptr().add(self.dirent_offset) as *const RawDirent) };
+
+            // Adjust the offset for next time
             self.dirent_offset += entry.d_reclen as usize;
 
+            // Try to parse the file descriptor as an integer
             if let Some(fd) = parse_int_bytes(
                 entry
                     .d_name
@@ -392,7 +401,11 @@ impl FdIter {
                     .take_while(|c| **c != 0)
                     .map(|c| *c as u8),
             ) {
+                // Only return it if 1) it's in the correct range and 2) it's not
+                // the directory file descriptor we're using
                 if fd >= self.minfd && fd != self.dirfd {
+                    // We set self.curfd so that if something goes wrong we can switch to the maxfd
+                    // loop without repeating file descriptors
                     self.curfd = fd;
                     return Ok(Some(fd));
                 }
@@ -407,9 +420,12 @@ impl Iterator for FdIter {
     fn next(&mut self) -> Option<Self::Item> {
         #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
         if self.dirfd >= 0 {
+            // Try iterating using the directory file descriptor we opened
             if let Ok(res) = self.next_dirfd() {
                 return res;
             } else {
+                // Something went wrong. Close the directory file descriptor and reset it
+                // so we don't try to use it again.
                 unsafe {
                     libc::close(self.dirfd);
                 }
@@ -420,15 +436,20 @@ impl Iterator for FdIter {
         let maxfd = self.get_maxfd();
 
         while self.curfd <= maxfd {
+            // Get the current file descriptor
             let fd = self.curfd;
 
+            // Increment it for next time
             self.curfd += 1;
 
+            // If we weren't given the "possible" flag, we have to check that it's a valid
+            // file descriptor first.
             if self.possible || unsafe { libc::fcntl(fd, libc::F_GETFD) } >= 0 {
                 return Some(fd);
             }
         }
 
+        // Exhausted the range
         None
     }
 }
@@ -436,6 +457,7 @@ impl Iterator for FdIter {
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
 impl Drop for FdIter {
     fn drop(&mut self) {
+        // Close the directory file descriptor if one is open
         if self.dirfd >= 0 {
             unsafe {
                 libc::close(self.dirfd);
