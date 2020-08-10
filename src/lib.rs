@@ -406,7 +406,7 @@ impl Iterator for FdIter {
 
         let maxfd = self.get_maxfd();
 
-        while self.curfd < maxfd {
+        while self.curfd <= maxfd {
             let fd = self.curfd;
 
             self.curfd += 1;
