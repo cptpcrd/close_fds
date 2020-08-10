@@ -436,3 +436,66 @@ impl Drop for FdIter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+    use core::fmt::Write;
+
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+    pub struct BufWriter {
+        pub buf: [u8; 80],
+        pub i: usize,
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+    impl BufWriter {
+        pub fn new() -> Self {
+            Self {
+                buf: [0; 80],
+                i: 0,
+            }
+        }
+
+        pub fn iter_bytes(&'_ self) -> impl Iterator<Item=u8> + '_ {
+            self.buf.iter().take(self.i).cloned()
+        }
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+    impl Write for BufWriter {
+        fn write_str(&mut self, s: &str) -> core::fmt::Result {
+            if self.i + s.len() > self.buf.len() {
+                return Err(core::fmt::Error);
+            }
+
+            for &ch in s.as_bytes() {
+                self.buf[self.i] = ch;
+                self.i += 1;
+            }
+
+            Ok(())
+        }
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+    #[test]
+    fn test_parse_int_bytes() {
+        assert_eq!(parse_int_bytes(b"0".iter().cloned()), Some(0));
+        assert_eq!(parse_int_bytes(b"10".iter().cloned()), Some(10));
+        assert_eq!(parse_int_bytes(b"1423".iter().cloned()), Some(1423));
+
+        assert_eq!(parse_int_bytes(b" 0".iter().cloned()), None);
+        assert_eq!(parse_int_bytes(b"0 ".iter().cloned()), None);
+        assert_eq!(parse_int_bytes(b"-1".iter().cloned()), None);
+        assert_eq!(parse_int_bytes(b"+1".iter().cloned()), None);
+        assert_eq!(parse_int_bytes(b"1.".iter().cloned()), None);
+        assert_eq!(parse_int_bytes(b"".iter().cloned()), None);
+
+        let mut buf = BufWriter::new();
+        write!(&mut buf, "{}", libc::c_int::MAX as libc::c_uint + 1).unwrap();
+        assert_eq!(parse_int_bytes(buf.iter_bytes()), None);
+    }
+}
