@@ -23,12 +23,18 @@ pub fn iter_possible_fds(minfd: libc::c_int) -> FdIter {
 ///
 /// # Safety
 ///
-/// Some objects, such as `std::fs::File`, may open file descriptors and then assume
-/// that they will remain open. This function, by closing those file descriptors,
-/// violates those assumptions.
+/// This function is NOT safe to use if other threads are interacting with files,
+/// networking, or anything else that could possibly involve file descriptors in
+/// any way, shape, or form.
 ///
-/// This function is safe to use if it can be verified that this is not a concern.
-/// (For example, it *should* be safe at startup or just before an `exec()`.)
+/// In addition, some objects, such as `std::fs::File`, may open file descriptors
+/// and then assume that they will remain open. This function, by closing those
+/// file descriptors, violates those assumptions.
+///
+/// This function is safe to use if it can be verified that these are not concerns.
+/// For example, it *should* be safe at startup or just before an `exec()`. At all
+/// other times, exercise extreme caution when using this function, as it may lead
+/// to race conditions and/or security issues.
 pub unsafe fn close_open_fds(mut minfd: libc::c_int, keep_fds: &[libc::c_int]) {
     if minfd < 0 {
         minfd = 0;
