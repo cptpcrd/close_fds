@@ -467,6 +467,7 @@ impl FdIter {
                 if fd >= self.minfd && fd != self.dirfd {
                     // We set self.curfd so that if something goes wrong we can switch to the maxfd
                     // loop without repeating file descriptors
+                    debug_assert!(fd >= self.curfd);
                     self.curfd = fd;
                     return Ok(Some(fd));
                 }
