@@ -49,7 +49,7 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, keep_fds: &[libc::c_int]) {
         target_os = "dragonfly"
     ))]
     if max_keep_fd < minfd {
-        // On the BSDs, all the file descriptors in keep_fds are less than
+        // On the BSDs, if all the file descriptors in keep_fds are less than
         // minfd (or if keep_fds is empty), we can just call closefrom()
         externs::closefrom(minfd);
         return;
