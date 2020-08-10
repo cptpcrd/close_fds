@@ -193,14 +193,10 @@ unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
 type RawDirent = libc::dirent;
 #[cfg(target_os = "macos")]
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
+    let mut offset: libc::off_t = 0;
+
     // 344 is getdents64()
-    libc::syscall(
-        344,
-        fd,
-        buf.as_mut_ptr(),
-        buf.len(),
-        core::ptr::null_mut::<libc::off_t>(),
-    ) as isize
+    libc::syscall(344, fd, buf.as_mut_ptr(), buf.len(), &mut offset) as isize
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
