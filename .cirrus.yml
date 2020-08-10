@@ -24,8 +24,11 @@ task:
     - env:
         TOOLCHAIN: nightly
 
+  env:
+    CODECOV_TOKEN: ENCRYPTED[645300bf2ccb6ac55e3f14cb514d949af92487a838157dd08ecb814b375b4c9c1825a3eacc113862068f32072106baaa]
+
   install_script:
-    - pkg install -y curl
+    - pkg install -y curl kcov bash
     - curl -sSf https://sh.rustup.rs -o rustup.sh
     - sh rustup.sh -y --profile default --default-toolchain $TOOLCHAIN
   build_script:
@@ -33,11 +36,28 @@ task:
     - cargo build
   unmount_fdescfs_script:
     - umount /dev/fd || true
-  no_fdescs_test_script:
+  no_fdescfs_test_script:
     - . $HOME/.cargo/env
     - cargo test
+    - |
+      mkdir -p coverage-no-fdescfs
+      for f in target/debug/deps/*; do
+        if [ -x "$f" ]; then
+          kcov --exclude-pattern=/.cargo,/.rustup,/usr/lib --verify coverage-no-fdescfs "$f"
+        fi
+      done
   mount_fdescfs_script:
     - mount -t fdescfs fdescfs /dev/fd
-  fdescs_test_script:
+  fdescfs_test_script:
     - . $HOME/.cargo/env
     - cargo test
+    - |
+      mkdir -p coverage-fdescfs
+      for f in target/debug/deps/*; do
+        if [ -x "$f" ]; then
+          kcov --exclude-pattern=/.cargo,/.rustup,/usr/lib --verify coverage-fdescfs "$f"
+        fi
+      done
+  coverage_collect_upload_script:
+    - kcov --merge coverage-merged/ coverage-no-fdescfs/ coverage-fdescfs/
+    - OS="$FREEBSD_IMAGE" bash <(curl -s https://codecov.io/bash) -e OS,TOOLCHAIN -n "$FREEBSD_IMAGE-$TOOLCHAIN" -Z -f coverage-merged/kcov-merged/cobertura.xml
