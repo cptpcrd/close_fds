@@ -168,7 +168,17 @@ unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
 }
 
 #[cfg(target_os = "freebsd")]
-type RawDirent = libc::dirent;
+#[repr(C)]
+struct RawDirent {
+    pub d_fileno: libc::ino_t,
+    pub d_off: libc::off_t,
+    pub d_reclen: u16,
+    pub d_type: u8,
+    d_pad0: u8,
+    pub d_namlen: u16,
+    d_pad1: u16,
+    pub d_name: [libc::c_char; 256],
+}
 #[cfg(target_os = "freebsd")]
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     externs::getdirentries(
