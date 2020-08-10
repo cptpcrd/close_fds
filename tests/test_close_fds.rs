@@ -245,8 +245,6 @@ fn run_tests() {
 
     large_open_fds_test(|_keep_fds| ());
     large_open_fds_test(|keep_fds| {
-        keep_fds.sort_unstable_by(|a, b| {
-            ((a + b) % 5).cmp(&3)
-        });
+        keep_fds.sort_unstable_by(|a, b| ((a + b) % 5).cmp(&3));
     });
 }

@@ -276,7 +276,9 @@ fn parse_int_bytes<I: Iterator<Item = u8>>(it: I) -> Option<libc::c_int> {
 
     for ch in it {
         if ch >= b'0' && ch <= b'9' {
-            num = num.checked_mul(10)?.checked_add((ch - b'0') as libc::c_int)?;
+            num = num
+                .checked_mul(10)?
+                .checked_add((ch - b'0') as libc::c_int)?;
             seen_any = true;
         } else {
             return None;
@@ -544,13 +546,10 @@ mod tests {
     #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
     impl BufWriter {
         pub fn new() -> Self {
-            Self {
-                buf: [0; 80],
-                i: 0,
-            }
+            Self { buf: [0; 80], i: 0 }
         }
 
-        pub fn iter_bytes(&'_ self) -> impl Iterator<Item=u8> + '_ {
+        pub fn iter_bytes(&'_ self) -> impl Iterator<Item = u8> + '_ {
             self.buf.iter().take(self.i).cloned()
         }
     }
