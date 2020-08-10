@@ -147,7 +147,7 @@ fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
 
     FdIter {
         minfd,
-        curfd: -1,
+        curfd: minfd,
         possible,
         maxfd: -1,
         #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
@@ -415,10 +415,6 @@ impl Iterator for FdIter {
                 }
                 self.dirfd = -1;
             }
-        }
-
-        if self.curfd < 0 {
-            self.curfd = self.minfd;
         }
 
         let maxfd = self.get_maxfd();
