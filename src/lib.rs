@@ -164,6 +164,7 @@ fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
 #[cfg(target_os = "linux")]
 type RawDirent = libc::dirent64;
 #[cfg(target_os = "linux")]
+#[inline]
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     libc::syscall(
         libc::SYS_getdents64,
@@ -186,6 +187,7 @@ struct RawDirent {
     pub d_name: [libc::c_char; 256],
 }
 #[cfg(target_os = "freebsd")]
+#[inline]
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     externs::getdirentries(
         fd,
@@ -198,6 +200,7 @@ unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
 #[cfg(target_os = "macos")]
 type RawDirent = libc::dirent;
 #[cfg(target_os = "macos")]
+#[inline]
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     let mut offset: libc::off_t = 0;
 
