@@ -201,12 +201,12 @@ unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
 
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
 fn parse_int_bytes<I: Iterator<Item = u8>>(it: I) -> Option<libc::c_int> {
-    let mut num = 0;
+    let mut num: libc::c_int = 0;
     let mut seen_any = false;
 
     for ch in it {
         if ch >= b'0' && ch <= b'9' {
-            num = (num * 10) + (ch - b'0') as libc::c_int;
+            num = num.checked_mul(10)?.checked_add((ch - b'0') as libc::c_int)?;
             seen_any = true;
         } else {
             return None;
