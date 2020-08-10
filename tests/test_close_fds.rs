@@ -143,6 +143,61 @@ fn close_fds_keep2_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
     assert!(!fds.contains(&fd3));
 }
 
+fn large_open_fds_test() {
+    // Open a lot of file descriptors
+    let mut files = Vec::with_capacity(150);
+    for _ in 0..150 {
+        files.push(fs::File::open("/").unwrap());
+    }
+    let lowfd = files[0].as_raw_fd();
+
+    let mut openfds = Vec::new();
+    let mut closedfds = Vec::new();
+
+    // Close a few
+    for &index in &[140, 100, 10] {
+        let f: fs::File = files.remove(index);
+        closedfds.push(f.as_raw_fd());
+    }
+    for f in files.iter() {
+        openfds.push(f.as_raw_fd());
+    }
+
+    let mut cur_open_fds: Vec<RawFd>;
+
+    // Check that our expectations of which should be open and which
+    // should be closed are correct
+    cur_open_fds = close_fds::iter_open_fds(lowfd).collect();
+    println!("{:?}", cur_open_fds);
+    for fd in openfds.iter() {
+        assert!(cur_open_fds.contains(fd));
+    }
+    for fd in closedfds.iter() {
+        assert!(!cur_open_fds.contains(fd));
+    }
+
+    // Now, let's only keep a few file descriptors open.
+    closedfds.extend_from_slice(&openfds);
+    closedfds.sort_unstable();
+    openfds.clear();
+    for &index in &[130, 90, 3] {
+        openfds.push(closedfds.remove(index));
+    }
+
+    unsafe {
+        close_fds::close_open_fds(lowfd, &openfds);
+    }
+
+    // Again, check that our expectations match reality
+    cur_open_fds = close_fds::iter_open_fds(lowfd).collect();
+    for fd in openfds.iter() {
+        assert!(cur_open_fds.contains(fd));
+    }
+    for fd in closedfds.iter() {
+        assert!(!cur_open_fds.contains(fd));
+    }
+}
+
 #[test]
 fn run_tests() {
     // Run all tests here because these tests can't be run in parallel
@@ -155,4 +210,6 @@ fn run_tests() {
 
     run_basic_test(close_fds_keep1_test);
     run_basic_test(close_fds_keep2_test);
+
+    large_open_fds_test();
 }
