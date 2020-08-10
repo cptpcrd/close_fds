@@ -31,6 +31,13 @@ task:
   build_script:
     - . $HOME/.cargo/env
     - cargo build
-  test_script:
+  unmount_fdescfs_script:
+    - umount /dev/fd || true
+  no_fdescs_test_script:
+    - . $HOME/.cargo/env
+    - cargo test
+  mount_fdescfs_script:
+    - mount -t fdescfs fdescfs /dev/fd
+  fdescs_test_script:
     - . $HOME/.cargo/env
     - cargo test
