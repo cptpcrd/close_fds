@@ -22,7 +22,7 @@ jobs:
           - x86_64-unknown-freebsd
           - x86_64-unknown-netbsd
         os: [ubuntu-latest]
-        unmount-procfs: false
+        unmount-procfs: [false]
 
         include:
           - toolchain: stable
