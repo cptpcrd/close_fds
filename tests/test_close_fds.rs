@@ -143,7 +143,7 @@ fn close_fds_keep2_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
     assert!(!fds.contains(&fd3));
 }
 
-fn large_open_fds_test() {
+fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
     // Open a lot of file descriptors
     let mut files = Vec::with_capacity(150);
     for _ in 0..150 {
@@ -155,7 +155,7 @@ fn large_open_fds_test() {
     let mut closedfds = Vec::new();
 
     // Close a few
-    for &index in &[140, 100, 10] {
+    for &index in &[140, 110, 100, 75, 10] {
         let f: fs::File = files.remove(index);
         closedfds.push(f.as_raw_fd());
     }
@@ -168,7 +168,6 @@ fn large_open_fds_test() {
     // Check that our expectations of which should be open and which
     // should be closed are correct
     cur_open_fds = close_fds::iter_open_fds(lowfd).collect();
-    println!("{:?}", cur_open_fds);
     for fd in openfds.iter() {
         assert!(cur_open_fds.contains(fd));
     }
@@ -177,12 +176,15 @@ fn large_open_fds_test() {
     }
 
     // Now, let's only keep a few file descriptors open.
-    closedfds.extend_from_slice(&openfds);
-    closedfds.sort_unstable();
+    let mut extra_closedfds = openfds.to_vec();
+    extra_closedfds.sort_unstable();
     openfds.clear();
-    for &index in &[130, 90, 3] {
-        openfds.push(closedfds.remove(index));
+    for &index in &[130, 110, 90, 89, 65, 34, 21, 3] {
+        openfds.push(extra_closedfds.remove(index));
     }
+    closedfds.extend_from_slice(&extra_closedfds);
+
+    mangle_keep_fds(&mut openfds);
 
     unsafe {
         close_fds::close_open_fds(lowfd, &openfds);
@@ -211,5 +213,10 @@ fn run_tests() {
     run_basic_test(close_fds_keep1_test);
     run_basic_test(close_fds_keep2_test);
 
-    large_open_fds_test();
+    large_open_fds_test(|_keep_fds| ());
+    large_open_fds_test(|keep_fds| {
+        keep_fds.sort_unstable_by(|a, b| {
+            ((a + b) % 5).cmp(&3)
+        });
+    });
 }
