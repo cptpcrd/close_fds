@@ -22,7 +22,6 @@ jobs:
           - x86_64-unknown-freebsd
           - x86_64-unknown-netbsd
         os: [ubuntu-latest]
-        unmount-procfs: [false]
 
         include:
           - toolchain: stable
@@ -34,31 +33,6 @@ jobs:
           - toolchain: nightly
             target: x86_64-apple-darwin
             os: macos-latest
-
-          - toolchain: stable
-            target: x86_64-unknown-linux-gnu
-            os: macos-latest
-            unmount-procfs: true
-          - toolchain: beta
-            target: x86_64-unknown-linux-gnu
-            os: macos-latest
-            unmount-procfs: true
-          - toolchain: nightly
-            target: x86_64-unknown-linux-gnu
-            os: macos-latest
-            unmount-procfs: true
-          - toolchain: stable
-            target: x86_64-unknown-linux-musl
-            os: macos-latest
-            unmount-procfs: true
-          - toolchain: beta
-            target: x86_64-unknown-linux-musl
-            os: macos-latest
-            unmount-procfs: true
-          - toolchain: nightly
-            target: x86_64-unknown-linux-musl
-            os: macos-latest
-            unmount-procfs: true
 
     # Allow nightly builds to fail
     continue-on-error: ${{ matrix.toolchain == 'nightly' }}
@@ -83,13 +57,6 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           command: build
           args: --verbose --target ${{ matrix.target }}
-
-      - name: Bind mount empty directory onto /proc
-        run: |
-          set -e
-          mkdir /tmp/proc
-          sudo mount --bind /tmp/proc /proc
-        if: matrix.unmount-procfs
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -116,9 +83,6 @@ jobs:
           - x86_64-unknown-linux-gnu
           - x86_64-unknown-linux-musl
         os: [ubuntu-latest]
-        unmount-procfs:
-          - true
-          - false
 
     runs-on: ${{ matrix.os }}
 
@@ -136,13 +100,6 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           command: install
           args: cargo-tarpaulin
-
-      - name: Bind mount empty directory onto /proc
-        run: |
-          set -e
-          mkdir /tmp/proc
-          sudo mount --bind /tmp/proc /proc
-        if: matrix.unmount-procfs
 
       - name: Run tarpaulin
         uses: actions-rs/cargo@v1
@@ -174,15 +131,11 @@ jobs:
         target:
           - x86_64-unknown-linux-gnu
         os: [ubuntu-latest]
-        unmount-procfs:
-          - true
-          - false
 
         include:
           - toolchain: nightly
             target: x86_64-apple-darwin
             os: macos-latest
-            unmount-procfs: false
 
     runs-on: ${{ matrix.os }}
 
@@ -193,13 +146,6 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.target }}
-
-      - name: Bind mount empty directory onto /proc
-        run: |
-          set -e
-          mkdir /tmp/proc
-          sudo mount --bind /tmp/proc /proc
-        if: matrix.unmount-procfs
 
       - name: Run tests
         uses: actions-rs/cargo@v1
