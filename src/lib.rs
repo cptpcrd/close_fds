@@ -283,8 +283,10 @@ impl FdIter {
             }
         }
 
+        // Clamp it at 65536 because that's a LOT of file descriptors
+        // Also don't trust values below 1024
         let fdlimit = unsafe { libc::sysconf(libc::_SC_OPEN_MAX) };
-        if fdlimit > 0 && fdlimit <= 65536 {
+        if fdlimit >= 1024 && fdlimit <= 65536 {
             return fdlimit as libc::c_int - 1;
         }
 
