@@ -53,6 +53,25 @@ jobs:
             target: x86_64-pc-windows-gnu
             os: windows-latest
 
+          - toolchain: stable
+            target: i686-pc-windows-msvc
+            os: windows-latest
+          - toolchain: beta
+            target: i686-pc-windows-msvc
+            os: windows-latest
+          - toolchain: nightly
+            target: i686-pc-windows-msvc
+            os: windows-latest
+          - toolchain: stable
+            target: i686-pc-windows-gnu
+            os: windows-latest
+          - toolchain: beta
+            target: i686-pc-windows-gnu
+            os: windows-latest
+          - toolchain: nightly
+            target: i686-pc-windows-gnu
+            os: windows-latest
+
     # Allow nightly builds to fail
     continue-on-error: ${{ matrix.toolchain == 'nightly' }}
 
