@@ -1,8 +1,10 @@
-use std::fs;
-use std::os::unix::prelude::*;
-
-fn is_fd_open(fd: RawFd) -> bool {
+#[cfg(unix)]
+fn is_fd_open(fd: libc::c_int) -> bool {
     unsafe { libc::fcntl(fd, libc::F_GETFD) >= 0 }
+}
+#[cfg(windows)]
+fn is_fd_open(fd: libc::c_int) -> bool {
+    unsafe { libc::get_osfhandle(fd) >= 0 }
 }
 
 fn check_sorted<T: Ord>(items: &[T]) {
@@ -17,10 +19,13 @@ fn check_sorted<T: Ord>(items: &[T]) {
     }
 }
 
-fn run_basic_test(callback: fn(fd1: RawFd, fd2: RawFd, fd3: RawFd)) {
-    let f1 = fs::File::open("/").unwrap();
-    let f2 = fs::File::open("/").unwrap();
-    let f3 = fs::File::open("/").unwrap();
+#[cfg(unix)]
+fn run_basic_test(callback: fn(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int)) {
+    use std::os::unix::prelude::*;
+
+    let f1 = std::fs::File::open("/").unwrap();
+    let f2 = std::fs::File::open("/").unwrap();
+    let f3 = std::fs::File::open("/").unwrap();
 
     let fd1 = f1.as_raw_fd();
     let fd2 = f2.as_raw_fd();
@@ -35,8 +40,45 @@ fn run_basic_test(callback: fn(fd1: RawFd, fd2: RawFd, fd3: RawFd)) {
     callback(fd1, fd2, fd3);
 }
 
-fn iter_open_fds_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
-    let mut fds: Vec<RawFd>;
+#[cfg(windows)]
+fn run_basic_test(callback: fn(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int)) {
+    fn openfd() -> libc::c_int {
+        let path = std::ffi::CString::new(
+            std::env::current_exe()
+                .unwrap()
+                .into_os_string()
+                .into_string()
+                .unwrap()
+                .into_bytes(),
+        )
+        .unwrap();
+        let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY) };
+        assert!(fd >= 0, "{}", std::io::Error::last_os_error());
+        fd
+    }
+
+    let fd1 = openfd();
+    let fd2 = openfd();
+    let fd3 = openfd();
+
+    unsafe {
+        libc::close(fd3);
+    }
+
+    assert!(is_fd_open(fd1));
+    assert!(is_fd_open(fd2));
+    assert!(!is_fd_open(fd3));
+
+    callback(fd1, fd2, fd3);
+
+    unsafe {
+        libc::close(fd1);
+        libc::close(fd2);
+    }
+}
+
+fn iter_open_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
+    let mut fds: Vec<libc::c_int>;
 
     fds = close_fds::iter_open_fds(-1).collect();
     check_sorted(&fds);
@@ -77,8 +119,8 @@ fn iter_open_fds_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
     assert!(!fds.contains(&fd3));
 }
 
-fn iter_possible_fds_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
-    let mut fds: Vec<RawFd>;
+fn iter_possible_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
+    let mut fds: Vec<libc::c_int>;
 
     fds = close_fds::iter_possible_fds(-1).collect();
     check_sorted(&fds);
@@ -111,8 +153,8 @@ fn iter_possible_fds_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
     assert!(!fds.contains(&fd2));
 }
 
-fn close_fds_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
-    let mut fds: Vec<RawFd>;
+fn close_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
+    let mut fds: Vec<libc::c_int>;
 
     fds = close_fds::iter_open_fds(fd1).collect();
     check_sorted(&fds);
@@ -131,8 +173,8 @@ fn close_fds_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
     assert!(!fds.contains(&fd3));
 }
 
-fn close_fds_keep1_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
-    let mut fds: Vec<RawFd>;
+fn close_fds_keep1_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
+    let mut fds: Vec<libc::c_int>;
 
     fds = close_fds::iter_open_fds(fd1).collect();
     check_sorted(&fds);
@@ -151,8 +193,8 @@ fn close_fds_keep1_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
     assert!(!fds.contains(&fd3));
 }
 
-fn close_fds_keep2_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
-    let mut fds: Vec<RawFd>;
+fn close_fds_keep2_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
+    let mut fds: Vec<libc::c_int>;
 
     fds = close_fds::iter_open_fds(fd1).collect();
     check_sorted(&fds);
@@ -172,26 +214,48 @@ fn close_fds_keep2_test(fd1: RawFd, fd2: RawFd, fd3: RawFd) {
 }
 
 fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
-    // Open a lot of file descriptors
-    let mut files = Vec::with_capacity(150);
-    for _ in 0..150 {
-        files.push(fs::File::open("/").unwrap());
-    }
-    let lowfd = files[0].as_raw_fd();
-
     let mut openfds = Vec::new();
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::prelude::*;
+
+        for _ in 0..150 {
+            openfds.push(std::fs::File::open("/").unwrap().into_raw_fd());
+        }
+    }
+    #[cfg(windows)]
+    {
+        let path = std::ffi::CString::new(
+            std::env::current_exe()
+                .unwrap()
+                .into_os_string()
+                .into_string()
+                .unwrap()
+                .into_bytes(),
+        )
+        .unwrap();
+        for _ in 0..150 {
+            let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY) };
+            assert!(fd >= 0, "{}", std::io::Error::last_os_error());
+            openfds.push(fd);
+        }
+    }
+
+    let lowfd = openfds[0];
+
     let mut closedfds = Vec::new();
 
     // Close a few
     for &index in &[140, 110, 100, 75, 10] {
-        let f: fs::File = files.remove(index);
-        closedfds.push(f.as_raw_fd());
-    }
-    for f in files.iter() {
-        openfds.push(f.as_raw_fd());
+        let fd = openfds.remove(index);
+        unsafe {
+            libc::close(fd);
+        }
+        closedfds.push(fd);
     }
 
-    let mut cur_open_fds: Vec<RawFd>;
+    let mut cur_open_fds: Vec<libc::c_int>;
 
     // Check that our expectations of which should be open and which
     // should be closed are correct
@@ -228,11 +292,53 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
     for fd in closedfds.iter() {
         assert!(!cur_open_fds.contains(fd));
     }
+
+    for &fd in openfds.iter() {
+        unsafe {
+            libc::close(fd);
+        }
+    }
 }
 
 #[test]
 fn run_tests() {
     // Run all tests here because these tests can't be run in parallel
+
+    #[cfg(windows)]
+    {
+        // On Windows, we have to set an "invalid parameter handler" to keep our
+        // is_fd_open() helper from segfaulting if the file descriptor is invalid.
+
+        extern "C" fn handle_invalid_param(
+            _expression: *const libc::wchar_t,
+            _function: *const libc::wchar_t,
+            _file: *const libc::wchar_t,
+            _line: libc::c_uint,
+            _p_reserved: libc::uintptr_t,
+        ) {
+        }
+        extern "C" {
+            fn _set_invalid_parameter_handler(
+                p_new: extern "C" fn(
+                    expression: *const libc::wchar_t,
+                    function: *const libc::wchar_t,
+                    file: *const libc::wchar_t,
+                    line: libc::c_uint,
+                    p_reserved: libc::uintptr_t,
+                ),
+            ) -> extern "C" fn(
+                expression: *const libc::wchar_t,
+                function: *const libc::wchar_t,
+                file: *const libc::wchar_t,
+                line: libc::c_uint,
+                p_reserved: libc::uintptr_t,
+            );
+        }
+
+        unsafe {
+            _set_invalid_parameter_handler(handle_invalid_param);
+        }
+    }
 
     run_basic_test(iter_open_fds_test);
 
