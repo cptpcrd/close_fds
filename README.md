@@ -50,4 +50,4 @@ On the BSDs, `close_open_fds()` may also call `closefrom()`, which is very effic
 
 If none of the methods listed above are available, it will fall back on a simple loop through every possible file descriptor number -- from `minfd` to `sysconf(_SC_OPEN_MAX)` (`getmaxstdio()` on Windows).
 
-Note: The most common use case, `close_open_fds(3, &[])`, is very efficient on Linux, macOS, and all of the BSDs.
+Note: The most common use case, `close_open_fds(3, &[])`, is very efficient on Linux (with `/proc` mounted), macOS, and all of the BSDs.
