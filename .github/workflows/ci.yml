@@ -34,6 +34,25 @@ jobs:
             target: x86_64-apple-darwin
             os: macos-latest
 
+          - toolchain: stable
+            target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - toolchain: beta
+            target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - toolchain: nightly
+            target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - toolchain: stable
+            target: x86_64-pc-windows-gnu
+            os: windows-latest
+          - toolchain: beta
+            target: x86_64-pc-windows-gnu
+            os: windows-latest
+          - toolchain: nightly
+            target: x86_64-pc-windows-gnu
+            os: windows-latest
+
     # Allow nightly builds to fail
     continue-on-error: ${{ matrix.toolchain == 'nightly' }}
 
@@ -70,6 +89,7 @@ jobs:
           matrix.os == 'ubuntu-latest' && (startsWith(matrix.target, 'x86_64-unknown-linux-')
               || startsWith(matrix.target, 'i686-unknown-linux-'))
           || matrix.os == 'macos-latest' && startsWith(matrix.target, 'x86_64-apple-darwin')
+          || matrix.os == 'windows-latest' && startsWith(matrix.target, 'x86_64-pc-windows')
 
   coverage-tarpaulin:
     name: Tarpaulin
