@@ -353,4 +353,28 @@ fn run_tests() {
     large_open_fds_test(|keep_fds| {
         keep_fds.sort_unstable_by(|a, b| ((a + b) % 5).cmp(&3));
     });
+
+    unsafe {
+        close_fds::close_open_fds(3, &[]);
+    }
+    assert_eq!(
+        close_fds::iter_open_fds(0).collect::<Vec::<libc::c_int>>(),
+        vec![0, 1, 2]
+    );
+
+    unsafe {
+        close_fds::close_open_fds(0, &[0, 1, 2]);
+    }
+    assert_eq!(
+        close_fds::iter_open_fds(0).collect::<Vec::<libc::c_int>>(),
+        vec![0, 1, 2]
+    );
+
+    unsafe {
+        close_fds::close_open_fds(-1, &[0, 1, 2]);
+    }
+    assert_eq!(
+        close_fds::iter_open_fds(0).collect::<Vec::<libc::c_int>>(),
+        vec![0, 1, 2]
+    );
 }
