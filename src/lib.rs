@@ -55,12 +55,6 @@ pub fn iter_possible_fds(minfd: libc::c_int) -> FdIter {
 /// efficient method can be employed. If not, it falls back on `.contains()`. which
 /// can be very slow.
 pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int]) {
-    #[cfg(windows)]
-    if minfd == 3 && keep_fds.is_empty() {
-        externs::fcloseall();
-        return;
-    }
-
     if minfd < 0 {
         minfd = 0;
     }
@@ -562,6 +556,7 @@ impl Drop for FdIter {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
     use super::*;
 
     #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]

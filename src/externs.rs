@@ -22,7 +22,4 @@ extern "C" {
 extern "C" {
     #[link_name = "_getmaxstdio"]
     pub fn getmaxstdio() -> libc::c_int;
-
-    #[link_name = "_fcloseall"]
-    pub fn fcloseall() -> libc::c_int;
 }
