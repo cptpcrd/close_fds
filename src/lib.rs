@@ -392,7 +392,7 @@ impl FdIter {
 
         if nfds == 0 {
             // No open file descriptors -- nothing to do!
-            return Some(0);
+            return Some(-1);
         }
 
         if nfds >= 100 {
