@@ -2,7 +2,8 @@
 
 mod externs;
 
-/// Iterate over all open file descriptors for the current process.
+/// Iterate over all open file descriptors for the current process, starting
+/// at `minfd`.
 #[inline]
 pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
     iter_fds(minfd, false)
