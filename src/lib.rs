@@ -243,19 +243,21 @@ fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
     };
 
     FdIter {
-        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-        minfd,
         curfd: minfd,
         possible,
         maxfd: -1,
         #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-        dirfd,
-        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-        dirents: [0; core::mem::size_of::<RawDirent>()],
-        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-        dirent_nbytes: 0,
-        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-        dirent_offset: 0,
+        dirfd_iter: if dirfd >= 0 {
+            Some(DirFdIter {
+                minfd,
+                dirfd,
+                dirents: [0; core::mem::size_of::<RawDirent>()],
+                dirent_nbytes: 0,
+                dirent_offset: 0,
+            })
+        } else {
+            None
+        },
     }
 }
 
@@ -341,20 +343,80 @@ fn parse_int_bytes<I: Iterator<Item = u8>>(it: I) -> Option<libc::c_int> {
     }
 }
 
-pub struct FdIter {
-    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+struct DirFdIter {
     minfd: libc::c_int,
+    dirfd: libc::c_int,
+    dirents: [u8; core::mem::size_of::<RawDirent>()],
+    dirent_nbytes: usize,
+    dirent_offset: usize,
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+impl DirFdIter {
+    fn next(&mut self) -> Result<Option<libc::c_int>, ()> {
+        loop {
+            if self.dirent_offset >= self.dirent_nbytes {
+                let nbytes = unsafe { getdents(self.dirfd, &mut self.dirents) };
+
+                match nbytes.cmp(&0) {
+                    // >= 0 -> Found at least one entry
+                    core::cmp::Ordering::Greater => {
+                        self.dirent_nbytes = nbytes as usize;
+                        self.dirent_offset = 0;
+                    }
+                    // 0 -> EOF
+                    core::cmp::Ordering::Equal => return Ok(None),
+                    // < 0 -> Error
+                    _ => return Err(()),
+                }
+            }
+
+            // Note: We're assuming the OS will return the file descriptors in ascending order.
+            // This's probably the case, considering that the kernel probably stores them in that
+            // order.
+
+            #[allow(clippy::cast_ptr_alignment)] // We trust the kernel not to make us segfault
+            let entry =
+                unsafe { &*(self.dirents.as_ptr().add(self.dirent_offset) as *const RawDirent) };
+
+            // Adjust the offset for next time
+            self.dirent_offset += entry.d_reclen as usize;
+
+            // Try to parse the file descriptor as an integer
+            if let Some(fd) = parse_int_bytes(
+                entry
+                    .d_name
+                    .iter()
+                    .take_while(|c| **c != 0)
+                    .map(|c| *c as u8),
+            ) {
+                // Only return it if 1) it's in the correct range and 2) it's not
+                // the directory file descriptor we're using
+
+                if fd >= self.minfd && fd != self.dirfd {
+                    return Ok(Some(fd));
+                }
+            }
+        }
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+impl Drop for DirFdIter {
+    fn drop(&mut self) {
+        // Close the directory file descriptor
+        unsafe {
+            libc::close(self.dirfd);
+        }
+    }
+}
+
+pub struct FdIter {
+    dirfd_iter: Option<DirFdIter>,
     curfd: libc::c_int,
     possible: bool,
     maxfd: libc::c_int,
-    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-    dirfd: libc::c_int,
-    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-    dirents: [u8; core::mem::size_of::<RawDirent>()],
-    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-    dirent_nbytes: usize,
-    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-    dirent_offset: usize,
 }
 
 impl FdIter {
@@ -485,57 +547,6 @@ impl FdIter {
 
         self.maxfd
     }
-
-    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-    fn next_dirfd(&mut self) -> Result<Option<libc::c_int>, ()> {
-        loop {
-            if self.dirent_offset >= self.dirent_nbytes {
-                let nbytes = unsafe { getdents(self.dirfd, &mut self.dirents) };
-
-                match nbytes.cmp(&0) {
-                    // >= 0 -> Found at least one entry
-                    core::cmp::Ordering::Greater => {
-                        self.dirent_nbytes = nbytes as usize;
-                        self.dirent_offset = 0;
-                    }
-                    // 0 -> EOF
-                    core::cmp::Ordering::Equal => return Ok(None),
-                    // < 0 -> Error
-                    _ => return Err(()),
-                }
-            }
-
-            // Note: We're assuming the OS will return the file descriptors in ascending order.
-            // This's probably the case, considering that the kernel probably stores them in that
-            // order.
-
-            #[allow(clippy::cast_ptr_alignment)] // We trust the kernel not to make us segfault
-            let entry =
-                unsafe { &*(self.dirents.as_ptr().add(self.dirent_offset) as *const RawDirent) };
-
-            // Adjust the offset for next time
-            self.dirent_offset += entry.d_reclen as usize;
-
-            // Try to parse the file descriptor as an integer
-            if let Some(fd) = parse_int_bytes(
-                entry
-                    .d_name
-                    .iter()
-                    .take_while(|c| **c != 0)
-                    .map(|c| *c as u8),
-            ) {
-                // Only return it if 1) it's in the correct range and 2) it's not
-                // the directory file descriptor we're using
-                if fd >= self.minfd && fd != self.dirfd {
-                    // We set self.curfd so that if something goes wrong we can switch to the maxfd
-                    // loop without repeating file descriptors
-                    debug_assert!(fd >= self.curfd);
-                    self.curfd = fd;
-                    return Ok(Some(fd));
-                }
-            }
-        }
-    }
 }
 
 impl Iterator for FdIter {
@@ -543,17 +554,22 @@ impl Iterator for FdIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-        if self.dirfd >= 0 {
+        if let Some(dfd_iter) = self.dirfd_iter.as_mut() {
             // Try iterating using the directory file descriptor we opened
-            if let Ok(res) = self.next_dirfd() {
+            if let Ok(res) = dfd_iter.next() {
+                if let Some(fd) = res {
+                    debug_assert!(fd >= self.curfd);
+
+                    // We set self.curfd so that if something goes wrong we can switch to the maxfd
+                    // loop without repeating file descriptors
+                    self.curfd = fd;
+                }
+
                 return res;
             } else {
                 // Something went wrong. Close the directory file descriptor and reset it
                 // so we don't try to use it again.
-                unsafe {
-                    libc::close(self.dirfd);
-                }
-                self.dirfd = -1;
+                drop(self.dirfd_iter.take());
             }
         }
 
@@ -575,18 +591,6 @@ impl Iterator for FdIter {
 
         // Exhausted the range
         None
-    }
-}
-
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-impl Drop for FdIter {
-    fn drop(&mut self) {
-        // Close the directory file descriptor if one is open
-        if self.dirfd >= 0 {
-            unsafe {
-                libc::close(self.dirfd);
-            }
-        }
     }
 }
 
