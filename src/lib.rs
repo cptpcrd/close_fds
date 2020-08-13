@@ -158,6 +158,37 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
     }
 }
 
+#[cfg(target_os = "linux")]
+fn is_wsl() -> bool {
+    let mut uname: libc::utsname = unsafe { core::mem::zeroed() };
+
+    if unsafe { libc::uname(&mut uname) } == 0 {
+        // Look for the string "Microsoft" at the end
+        // Because we don't have libstd, and because libc::c_char might be either
+        // an i8 or a u8, this is actually kind of hard.
+
+        if let Some(nul_index) = uname.release.iter().position(|c| *c == 0) {
+            if let Some(m_index) = uname
+                .release
+                .iter()
+                .take(nul_index)
+                .position(|c| *c as u8 == b'M')
+            {
+                if nul_index - m_index == b"Microsoft".len()
+                    && uname.release[m_index..nul_index]
+                        .iter()
+                        .zip(b"Microsoft".iter())
+                        .all(|(&a, &b)| a as u8 == b)
+                {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
+}
+
 fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
     if minfd < 0 {
         minfd = 0;
@@ -167,33 +198,7 @@ fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
     let dirfd = unsafe {
         // Try /proc/self/fd on Linux
 
-        // Check if this is WSL
-        let mut is_wsl = false;
-        let mut uname: libc::utsname = core::mem::zeroed();
-        if libc::uname(&mut uname) == 0 {
-            // Look for the string "Microsoft" at the end
-            // Because we don't have libstd, and because libc::c_char might be either
-            // an i8 or a u8, this is actually kind of hard.
-            if let Some(nul_index) = uname.release.iter().position(|c| *c == 0) {
-                if let Some(m_index) = uname
-                    .release
-                    .iter()
-                    .take(nul_index)
-                    .position(|c| *c as u8 == b'M')
-                {
-                    if nul_index - m_index == b"Microsoft".len()
-                        && uname.release[m_index..nul_index]
-                            .iter()
-                            .zip(b"Microsoft".iter())
-                            .all(|(&a, &b)| a as u8 == b)
-                    {
-                        is_wsl = true;
-                    }
-                }
-            }
-        }
-
-        if is_wsl {
+        if is_wsl() {
             // On WSL, getdents64() doesn't always return the entries in order. We can't trust it.
             -1
         } else {
