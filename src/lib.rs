@@ -199,7 +199,10 @@ fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
         // Try /proc/self/fd on Linux
 
         if is_wsl() {
-            // On WSL, getdents64() doesn't always return the entries in order. We can't trust it.
+            // On WSL, getdents64() doesn't always return the entries in order.
+            // It also seems to skip some file descriptors.
+            // We can't trust it.
+
             -1
         } else {
             libc::open(
