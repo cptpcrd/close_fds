@@ -565,20 +565,25 @@ impl Iterator for FdIter {
         #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
         if let Some(dfd_iter) = self.dirfd_iter.as_mut() {
             // Try iterating using the directory file descriptor we opened
-            if let Ok(res) = dfd_iter.next() {
-                if let Some(fd) = res {
+
+            match dfd_iter.next() {
+                Ok(Some(fd)) => {
                     debug_assert!(fd >= self.curfd);
 
                     // We set self.curfd so that if something goes wrong we can switch to the maxfd
                     // loop without repeating file descriptors
                     self.curfd = fd;
+
+                    return Some(fd);
                 }
 
-                return res;
-            } else {
-                // Something went wrong. Close the directory file descriptor and reset it
-                // so we don't try to use it again.
-                drop(self.dirfd_iter.take());
+                Ok(None) => return None,
+
+                Err(_) => {
+                    // Something went wrong. Close the directory file descriptor and reset it
+                    // so we don't try to use it again.
+                    drop(self.dirfd_iter.take());
+                }
             }
         }
 
