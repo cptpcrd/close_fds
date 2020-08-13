@@ -418,6 +418,7 @@ impl Drop for DirFdIter {
 }
 
 pub struct FdIter {
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
     dirfd_iter: Option<DirFdIter>,
     curfd: libc::c_int,
     possible: bool,
