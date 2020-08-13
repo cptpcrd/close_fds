@@ -199,7 +199,7 @@ fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
         } else {
             libc::open(
                 "/proc/self/fd\0".as_ptr() as *const libc::c_char,
-                libc::O_RDONLY | libc::O_DIRECTORY,
+                libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
             )
         }
     };
@@ -223,7 +223,7 @@ fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
 
                 libc::open(
                     "/dev/fd\0".as_ptr() as *const libc::c_char,
-                    libc::O_RDONLY | libc::O_DIRECTORY,
+                    libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
                 )
             } else {
                 // /dev/fd is probably a static directory
@@ -238,7 +238,7 @@ fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
 
         libc::open(
             "/dev/fd\0".as_ptr() as *const libc::c_char,
-            libc::O_RDONLY | libc::O_DIRECTORY,
+            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
         )
     };
 
