@@ -159,7 +159,10 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
 }
 
 #[cfg(target_os = "linux")]
-fn is_wsl() -> bool {
+fn is_wsl_1() -> bool {
+    // It seems that on WSL 1 the kernel "release name" ends with "-Microsoft", and on WSL 2 the
+    // release name ends with "-microsoft-standard". So we look for "Microsoft" at the end.
+
     let mut uname: libc::utsname = unsafe { core::mem::zeroed() };
 
     if unsafe { libc::uname(&mut uname) } == 0 {
@@ -198,8 +201,8 @@ fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
     let dirfd = unsafe {
         // Try /proc/self/fd on Linux
 
-        if is_wsl() {
-            // On WSL, getdents64() doesn't always return the entries in order.
+        if is_wsl_1() {
+            // On WSL 1, getdents64() doesn't always return the entries in order.
             // It also seems to skip some file descriptors.
             // We can't trust it.
 
