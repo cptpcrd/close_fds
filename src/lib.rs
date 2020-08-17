@@ -256,7 +256,7 @@ fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
     FdIter {
         curfd: minfd,
         possible,
-        maxfd: -1,
+        maxfd: None,
         #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
         dirfd_iter: if dirfd >= 0 {
             Some(DirFdIter {
@@ -428,7 +428,7 @@ pub struct FdIter {
     dirfd_iter: Option<DirFdIter>,
     curfd: libc::c_int,
     possible: bool,
-    maxfd: libc::c_int,
+    maxfd: Option<libc::c_int>,
 }
 
 impl FdIter {
@@ -553,11 +553,14 @@ impl FdIter {
     }
 
     fn get_maxfd(&mut self) -> libc::c_int {
-        if self.maxfd < 0 {
-            self.maxfd = Self::get_maxfd_direct();
+        match self.maxfd {
+            Some(maxfd) => maxfd,
+            None => {
+                let maxfd = Self::get_maxfd_direct();
+                self.maxfd = Some(maxfd);
+                maxfd
+            }
         }
-
-        self.maxfd
     }
 }
 
