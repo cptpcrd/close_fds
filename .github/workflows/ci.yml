@@ -133,11 +133,11 @@ jobs:
           target: ${{ matrix.target }}
 
       - name: Install tarpaulin
-        uses: actions-rs/cargo@v1
+        uses: actions-rs/install@v0.1
         with:
-          toolchain: ${{ matrix.toolchain }}
-          command: install
-          args: cargo-tarpaulin
+          crate: cargo-tarpaulin
+          version: latest
+          use-tool-cache: true
 
       - name: Run tarpaulin
         uses: actions-rs/cargo@v1
@@ -204,11 +204,11 @@ jobs:
           RUSTDOCFLAGS: -Cpanic=abort
 
       - name: Install grcov
-        uses: actions-rs/cargo@v1
+        uses: actions-rs/install@v0.1
         with:
-          toolchain: ${{ matrix.toolchain }}
-          command: install
-          args: grcov
+          crate: grcov
+          version: latest
+          use-tool-cache: true
 
       - name: Run grcov
         uses: actions-rs/grcov@v0.1
