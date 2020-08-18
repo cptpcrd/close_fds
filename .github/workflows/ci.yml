@@ -175,6 +175,13 @@ jobs:
             target: x86_64-apple-darwin
             os: macos-latest
 
+          - toolchain: nightly
+            target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - toolchain: nightly
+            target: x86_64-pc-windows-gnu
+            os: windows-latest
+
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -196,23 +203,15 @@ jobs:
           RUSTFLAGS: -Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort
           RUSTDOCFLAGS: -Cpanic=abort
 
-      # Based off of https://github.com/mozilla/grcov#grcov-with-travis
-      - name: Download grcov
-        run: |
-          case ${{ matrix.os }} in
-            macos*)
-              os_name=osx
-              ;;
-            *)
-              os_name=linux
-              ;;
-          esac
-          curl -L https://github.com/mozilla/grcov/releases/latest/download/grcov-${os_name}-x86_64.tar.bz2 | tar jxf -
+      - name: Install grcov
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          command: install
+          args: grcov
+
       - name: Run grcov
-        run: |
-          set -e
-          zip -0 ccov.zip `find . \( -name "close_fds*.gc*" \) -print`
-          ./grcov ccov.zip -s . -t lcov --llvm --branch --ignore-not-existing --ignore "/*" -o lcov.info
+        uses: actions-rs/grcov@v0.1
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1.0.7
