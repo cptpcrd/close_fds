@@ -91,25 +91,7 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
         minfd = 0;
     }
 
-    // We do two things in this loop:
-    //
-    // 1. Get the maximum file descriptor from the list
-    // 2. Check if the list is sorted
-    let mut max_keep_fd = -1;
-    let mut last_fd = -1;
-    let mut fds_sorted = true;
-    for fd in keep_fds.iter().cloned() {
-        // Check for a new maximum file descriptor
-        if fd > max_keep_fd {
-            max_keep_fd = fd;
-        }
-
-        if last_fd > fd {
-            // Out of order
-            fds_sorted = false;
-        }
-        last_fd = fd;
-    }
+    let (max_keep_fd, fds_sorted) = inspect_keep_fds(keep_fds);
 
     #[cfg(any(
         target_os = "freebsd",
@@ -158,30 +140,53 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
             {
                 libc::close(fd);
             }
-        } else {
-            let should_keep = if fds_sorted {
-                // If the file descriptor list is sorted, we can do a more efficient
-                // lookup
-
-                // Skip over any elements less than the current file descriptor.
-                // For example if keep_fds is [0, 1, 4, 5] and fd is either 3 or 4,
-                // we can skip over 0 and 1 -- those cases have been covered already.
-                if let Some(index) = keep_fds.iter().position(|&x| x >= fd) {
-                    keep_fds = &keep_fds[index..];
-                }
-
-                // Is the file descriptor we're searching for present?
-                keep_fds.first() == Some(&fd)
-            } else {
-                // Otherwise, we have to fall back on contains()
-                keep_fds.contains(&fd)
-            };
-
-            if !should_keep {
-                // Close it if it's not in keep_fds
-                libc::close(fd);
-            }
+        } else if !check_should_keep(&mut keep_fds, fd, fds_sorted) {
+            // Close it if it's not in keep_fds
+            libc::close(fd);
         }
+    }
+}
+
+fn inspect_keep_fds(keep_fds: &[libc::c_int]) -> (libc::c_int, bool) {
+    // Get the maximum file descriptor from the list, and also check if it's
+    // sorted.
+
+    let mut max_keep_fd = -1;
+    let mut last_fd = -1;
+    let mut fds_sorted = true;
+    for fd in keep_fds.iter().cloned() {
+        // Check for a new maximum file descriptor
+        if fd > max_keep_fd {
+            max_keep_fd = fd;
+        }
+
+        if last_fd > fd {
+            // Out of order
+            fds_sorted = false;
+        }
+        last_fd = fd;
+    }
+
+    (max_keep_fd, fds_sorted)
+}
+
+fn check_should_keep(keep_fds: &mut &[libc::c_int], fd: libc::c_int, fds_sorted: bool) -> bool {
+    if fds_sorted {
+        // If the file descriptor list is sorted, we can do a more efficient
+        // lookup
+
+        // Skip over any elements less than the current file descriptor.
+        // For example if keep_fds is [0, 1, 4, 5] and fd is either 3 or 4,
+        // we can skip over 0 and 1 -- those cases have been covered already.
+        if let Some(index) = keep_fds.iter().position(|&x| x >= fd) {
+            *keep_fds = &(*keep_fds)[index..];
+        }
+
+        // Is the file descriptor we're searching for present?
+        keep_fds.first() == Some(&fd)
+    } else {
+        // Otherwise, we have to fall back on contains()
+        keep_fds.contains(&fd)
     }
 }
 
