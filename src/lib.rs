@@ -22,20 +22,23 @@ pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
 /// is valid. For example:
 ///
 /// ```
-/// use std::os::unix::io::FromRawFd;
+/// #[cfg(unix)]
+/// {
+///     use std::os::unix::io::FromRawFd;
 ///
-/// for fd in close_fds::iter_possible_fds(0) {
-///     let file = unsafe { std::fs::File::from_raw_fd(fd) };
-///     let _meta = match file.metadata() {
-///         Ok(m) => m,
-///         Err(e) if e.raw_os_error() == Some(libc::EBADF) => {
-///             std::mem::forget(file);  // Don't try to close() it
-///             continue;
-///         }
-///         Err(e) => panic!(e),
-///     };
+///     for fd in close_fds::iter_possible_fds(0) {
+///         let file = unsafe { std::fs::File::from_raw_fd(fd) };
+///         let _meta = match file.metadata() {
+///             Ok(m) => m,
+///             Err(e) if e.raw_os_error() == Some(libc::EBADF) => {
+///                 std::mem::forget(file);  // Don't try to close() it
+///                 continue;
+///             }
+///             Err(e) => panic!(e),
+///         };
 ///
-///     // ...
+///         // ...
+///     }
 /// }
 /// ```
 ///
