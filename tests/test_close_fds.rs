@@ -7,6 +7,38 @@ fn is_fd_open(fd: libc::c_int) -> bool {
     unsafe { libc::get_osfhandle(fd) >= 0 }
 }
 
+#[cfg(unix)]
+fn set_fd_cloexec(fd: libc::c_int, cloexec: bool) {
+    let mut flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+    if flags < 0 {
+        return;
+    }
+
+    // We could eliminate the second fcntl() in some cases, but this is just testing code.
+    if cloexec {
+        flags |= libc::FD_CLOEXEC;
+    } else {
+        flags &= !libc::FD_CLOEXEC;
+    }
+
+    unsafe {
+        libc::fcntl(fd, libc::F_SETFD, flags);
+    }
+}
+
+#[cfg(unix)]
+fn is_fd_cloexec(fd: libc::c_int) -> Option<bool> {
+    let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+
+    if flags < 0 {
+        None
+    } else if flags & libc::FD_CLOEXEC == libc::FD_CLOEXEC {
+        Some(true)
+    } else {
+        Some(false)
+    }
+}
+
 fn check_sorted<T: Ord>(items: &[T]) {
     let mut last_item = None;
 
@@ -221,9 +253,18 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
         use std::os::unix::prelude::*;
 
         for _ in 0..150 {
-            openfds.push(std::fs::File::open("/").unwrap().into_raw_fd());
+            let fd = std::fs::File::open("/").unwrap().into_raw_fd();
+            openfds.push(fd);
+
+            // Test that is_fd_cloexec() and set_fd_cloexec() behave properly
+            assert_eq!(is_fd_cloexec(fd), Some(true));
+            set_fd_cloexec(fd, false);
+            assert_eq!(is_fd_cloexec(fd), Some(false));
+            set_fd_cloexec(fd, true);
+            assert_eq!(is_fd_cloexec(fd), Some(true));
         }
     }
+
     #[cfg(windows)]
     {
         let path = std::ffi::CString::new(
@@ -253,6 +294,9 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
             libc::close(fd);
         }
         closedfds.push(fd);
+
+        #[cfg(unix)]
+        assert_eq!(is_fd_cloexec(fd), None);
     }
 
     let mut cur_open_fds: Vec<libc::c_int>;
@@ -262,10 +306,33 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
     cur_open_fds = close_fds::iter_open_fds(lowfd).collect();
     check_sorted(&cur_open_fds);
     for fd in openfds.iter() {
+        #[cfg(unix)]
+        assert_eq!(is_fd_cloexec(*fd), Some(true));
+
         assert!(cur_open_fds.contains(fd));
     }
     for fd in closedfds.iter() {
+        #[cfg(unix)]
+        assert_eq!(is_fd_cloexec(*fd), None);
+
         assert!(!cur_open_fds.contains(fd));
+    }
+
+    #[cfg(unix)]
+    {
+        // Set them all as non-close-on-exec
+        for fd in openfds.iter() {
+            set_fd_cloexec(*fd, false);
+            assert_eq!(is_fd_cloexec(*fd), Some(false));
+        }
+
+        // Make them all close-on-exec with set_fds_cloexec()
+        close_fds::set_fds_cloexec(lowfd, &[]);
+
+        // Now make sure they're all close-on-exec
+        for fd in openfds.iter() {
+            assert_eq!(is_fd_cloexec(*fd), Some(true));
+        }
     }
 
     // Now, let's only keep a few file descriptors open.
