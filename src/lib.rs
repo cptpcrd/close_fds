@@ -147,6 +147,55 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
     }
 }
 
+/// Identical to `close_open_fds()`, but sets the `FD_CLOEXEC` flag on the file descriptors instead
+/// of closing them. (Unix-only)
+///
+/// On some platforms (most notably, Linux without `/proc` mounted and some of the BSDs), this is
+/// significantly less efficient than `close_open_fds()`, and use of that function should be
+/// preferred when possible.
+#[cfg(unix)]
+pub fn set_fds_cloexec(minfd: libc::c_int, mut keep_fds: &[libc::c_int]) {
+    let (max_keep_fd, fds_sorted) = inspect_keep_fds(keep_fds);
+
+    for fd in iter_possible_fds(minfd) {
+        if fd > max_keep_fd || !check_should_keep(&mut keep_fds, fd, fds_sorted) {
+            // It's not in keep_fds
+            unsafe {
+                set_cloexec(fd);
+            }
+        }
+    }
+}
+
+#[cfg(unix)]
+unsafe fn set_cloexec(fd: libc::c_int) {
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "dragonfly"
+    ))]
+    libc::ioctl(fd, libc::FIOCLEX);
+
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "dragonfly"
+    )))]
+    {
+        let flags = libc::fcntl(fd, libc::F_GETFD);
+        if flags >= 0 && (flags & libc::FD_CLOEXEC) != libc::FD_CLOEXEC {
+            // fcntl(F_GETFD) succeeded, and it did *not* return the FD_CLOEXEC flag
+            libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC);
+        }
+    }
+}
+
 fn inspect_keep_fds(keep_fds: &[libc::c_int]) -> (libc::c_int, bool) {
     // Get the maximum file descriptor from the list, and also check if it's
     // sorted.
