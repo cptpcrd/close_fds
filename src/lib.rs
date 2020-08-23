@@ -160,9 +160,8 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
 /// Identical to `close_open_fds()`, but sets the `FD_CLOEXEC` flag on the file descriptors instead
 /// of closing them. (Unix-only)
 ///
-/// On some platforms (most notably, Linux without `/proc` mounted and some of the BSDs), this is
-/// significantly less efficient than `close_open_fds()`, and use of that function should be
-/// preferred when possible.
+/// On some platforms (most notably, some of the BSDs), this is significantly less efficient than
+/// `close_open_fds()`, and use of that function should be preferred when possible.
 #[cfg(unix)]
 pub fn set_fds_cloexec(minfd: libc::c_int, mut keep_fds: &[libc::c_int]) {
     let (max_keep_fd, fds_sorted) = util::inspect_keep_fds(keep_fds);
