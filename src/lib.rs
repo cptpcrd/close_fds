@@ -178,29 +178,9 @@ pub fn set_fds_cloexec(minfd: libc::c_int, mut keep_fds: &[libc::c_int]) {
 
 #[cfg(unix)]
 unsafe fn set_cloexec(fd: libc::c_int) {
-    #[cfg(any(
-        target_os = "linux",
-        target_os = "macos",
-        target_os = "freebsd",
-        target_os = "openbsd",
-        target_os = "netbsd",
-        target_os = "dragonfly"
-    ))]
-    libc::ioctl(fd, libc::FIOCLEX);
-
-    #[cfg(not(any(
-        target_os = "linux",
-        target_os = "macos",
-        target_os = "freebsd",
-        target_os = "openbsd",
-        target_os = "netbsd",
-        target_os = "dragonfly"
-    )))]
-    {
-        let flags = libc::fcntl(fd, libc::F_GETFD);
-        if flags >= 0 && (flags & libc::FD_CLOEXEC) != libc::FD_CLOEXEC {
-            // fcntl(F_GETFD) succeeded, and it did *not* return the FD_CLOEXEC flag
-            libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC);
-        }
+    let flags = libc::fcntl(fd, libc::F_GETFD);
+    if flags >= 0 && (flags & libc::FD_CLOEXEC) != libc::FD_CLOEXEC {
+        // fcntl(F_GETFD) succeeded, and it did *not* return the FD_CLOEXEC flag
+        libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC);
     }
 }
