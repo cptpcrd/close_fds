@@ -37,7 +37,12 @@ impl FdIter {
             // On FreeBSD, we can get the *number* of open file descriptors. From that,
             // we can use an is_fd_valid() loop to get the maximum open file descriptor.
 
-            let mib = [libc::CTL_KERN, libc::KERN_PROC, crate::externs::KERN_PROC_NFDS, 0];
+            let mib = [
+                libc::CTL_KERN,
+                libc::KERN_PROC,
+                crate::externs::KERN_PROC_NFDS,
+                0,
+            ];
             let mut nfds: libc::c_int = 0;
             let mut oldlen = core::mem::size_of::<libc::c_int>();
 
