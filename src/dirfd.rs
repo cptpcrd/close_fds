@@ -102,18 +102,21 @@ impl DirFdIter {
             // However, it can also be a fdescfs filesystem, in which case it's correct.
             // So we only trust /dev/fd if it's on a different device than /dev.
 
+            let dev_path_ptr = "/dev\0".as_ptr() as *const libc::c_char;
+            let devfd_path_ptr = "/dev/fd\0".as_ptr() as *const libc::c_char;
+
             let mut dev_stat = unsafe { core::mem::zeroed() };
             let mut devfd_stat = unsafe { core::mem::zeroed() };
 
             unsafe {
-                if libc::stat("/dev\0".as_ptr() as *const libc::c_char, &mut dev_stat) == 0
-                    && libc::stat("/dev/fd\0".as_ptr() as *const libc::c_char, &mut devfd_stat) == 0
+                if libc::stat(dev_path_ptr, &mut dev_stat) == 0
+                    && libc::stat(devfd_path_ptr, &mut devfd_stat) == 0
                     && dev_stat.st_dev != devfd_stat.st_dev
                 {
                     // /dev and /dev/fd are on different devices; /dev/fd is probably an fdescfs
 
                     libc::open(
-                        "/dev/fd\0".as_ptr() as *const libc::c_char,
+                        devfd_path_ptr,
                         libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
                     )
                 } else {
