@@ -86,3 +86,68 @@ pub fn is_fd_valid(fd: libc::c_int) -> bool {
 pub fn is_fd_valid(fd: libc::c_int) -> bool {
     unsafe { libc::get_osfhandle(fd) >= 0 }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_inspect_keep_fds() {
+        assert_eq!(inspect_keep_fds(&[]), (-1, true));
+
+        assert_eq!(inspect_keep_fds(&[0]), (0, true));
+        assert_eq!(inspect_keep_fds(&[0, 1]), (1, true));
+        assert_eq!(inspect_keep_fds(&[1, 0]), (1, false));
+
+        assert_eq!(inspect_keep_fds(&[0, 1, 2, 5, 7]), (7, true));
+        assert_eq!(inspect_keep_fds(&[0, 1, 2, 7, 5]), (7, false));
+    }
+
+    #[test]
+    fn test_check_should_keep_sorted() {
+        let mut keep_fds: &[libc::c_int] = &[0, 1, 5, 8, 10];
+
+        assert!(check_should_keep(&mut keep_fds, 0, true));
+        assert_eq!(keep_fds, &[0, 1, 5, 8, 10]);
+
+        assert!(check_should_keep(&mut keep_fds, 1, true));
+        assert_eq!(keep_fds, &[1, 5, 8, 10]);
+
+        assert!(!check_should_keep(&mut keep_fds, 2, true));
+        assert_eq!(keep_fds, &[5, 8, 10]);
+        assert!(!check_should_keep(&mut keep_fds, 2, true));
+        assert_eq!(keep_fds, &[5, 8, 10]);
+
+        assert!(!check_should_keep(&mut keep_fds, 3, true));
+        assert_eq!(keep_fds, &[5, 8, 10]);
+
+        assert!(check_should_keep(&mut keep_fds, 5, true));
+        assert_eq!(keep_fds, &[5, 8, 10]);
+
+        assert!(!check_should_keep(&mut keep_fds, 6, true));
+        assert_eq!(keep_fds, &[8, 10]);
+    }
+
+    #[test]
+    fn test_check_should_keep_not_sorted() {
+        let mut keep_fds: &[libc::c_int] = &[0, 1, 5, 8, 10];
+
+        assert!(check_should_keep(&mut keep_fds, 0, false));
+        assert_eq!(keep_fds, &[0, 1, 5, 8, 10]);
+
+        assert!(check_should_keep(&mut keep_fds, 1, false));
+        assert_eq!(keep_fds, &[0, 1, 5, 8, 10]);
+
+        assert!(!check_should_keep(&mut keep_fds, 2, false));
+        assert_eq!(keep_fds, &[0, 1, 5, 8, 10]);
+
+        assert!(!check_should_keep(&mut keep_fds, 3, false));
+        assert_eq!(keep_fds, &[0, 1, 5, 8, 10]);
+
+        assert!(check_should_keep(&mut keep_fds, 5, false));
+        assert_eq!(keep_fds, &[0, 1, 5, 8, 10]);
+
+        assert!(!check_should_keep(&mut keep_fds, 6, false));
+        assert_eq!(keep_fds, &[0, 1, 5, 8, 10]);
+    }
+}
