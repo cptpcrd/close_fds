@@ -4,9 +4,6 @@ mod externs;
 mod fditer;
 mod util;
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-mod dirfd;
-
 pub use fditer::FdIter;
 
 /// Iterate over all open file descriptors for the current process, starting

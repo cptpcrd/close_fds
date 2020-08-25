@@ -1,3 +1,6 @@
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+mod dirfd;
+
 pub fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
     if minfd < 0 {
         minfd = 0;
@@ -8,13 +11,13 @@ pub fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
         possible,
         maxfd: -1,
         #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-        dirfd_iter: crate::dirfd::DirFdIter::open(minfd),
+        dirfd_iter: dirfd::DirFdIter::open(minfd),
     }
 }
 
 pub struct FdIter {
     #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
-    dirfd_iter: Option<crate::dirfd::DirFdIter>,
+    dirfd_iter: Option<dirfd::DirFdIter>,
     curfd: libc::c_int,
     possible: bool,
     maxfd: libc::c_int,
