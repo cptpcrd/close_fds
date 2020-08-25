@@ -49,26 +49,20 @@ pub fn is_wsl_1() -> bool {
     let mut uname: libc::utsname = unsafe { core::mem::zeroed() };
 
     if unsafe { libc::uname(&mut uname) } == 0 {
-        // Look for the string "Microsoft" at the end
-        // Because we don't have libstd, and because libc::c_char might be either
-        // an i8 or a u8, this is actually kind of hard.
+        let uname_release_len = uname
+            .release
+            .iter()
+            .position(|c| *c == 0)
+            .unwrap_or(uname.release.len());
 
-        if let Some(nul_index) = uname.release.iter().position(|c| *c == 0) {
-            if let Some(m_index) = uname
-                .release
-                .iter()
-                .take(nul_index)
-                .position(|c| *c as u8 == b'M')
-            {
-                if nul_index - m_index == b"Microsoft".len()
-                    && uname.release[m_index..nul_index]
-                        .iter()
-                        .zip(b"Microsoft".iter())
-                        .all(|(&a, &b)| a as u8 == b)
-                {
-                    return true;
-                }
-            }
+        // uname.release is an array of `libc::c_char`s. `libc::c_char` may be either a u8 or an
+        // i8, so unfortunately we have to use unsafe operations to get a reference as a &[u8].
+        let uname_release = unsafe {
+            core::slice::from_raw_parts(uname.release.as_ptr() as *const u8, uname_release_len)
+        };
+
+        if uname_release.ends_with(b"Microsoft") {
+            return true;
         }
     }
 
