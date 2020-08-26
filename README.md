@@ -87,8 +87,8 @@ Here is a list of the methods that `iter_open_fds()`, `iter_possible_fds()`, `cl
 - Solaris and Illumos
     - `/dev/fd` or `/proc/self/fd` if either is available (very efficient)
 
-On the BSDs, `close_open_fds()` may also call `closefrom()`, which is very efficient.
+In certain circumstances, `close_open_fds()` may also call `closefrom()` on the BSDs or `close_range()` on Linux 5.9+, both of which are very efficient.
 
 If none of the methods listed above are available, it will fall back on a simple loop through every possible file descriptor number -- from `minfd` to `sysconf(_SC_OPEN_MAX)`. This is slow, but it will always work.
 
-Note: The most common use case, `close_open_fds(3, &[])`, is very efficient on Linux (with `/proc` mounted), macOS, all of the BSDs, and Solaris/Illumos.
+Note: The most common use case, `close_open_fds(3, &[])`, is very efficient on Linux (with `/proc` mounted, or on kernel 5.9+), macOS, all of the BSDs, and Solaris/Illumos.

@@ -4,6 +4,10 @@ pub const KERN_PROC_NFDS: libc::c_int = 43;
 #[cfg(target_os = "macos")]
 pub const SYS_GETDIRENTRIES64: libc::c_int = 344;
 
+// This is the correct value for every architecture except alpha, which Rust doesn't support.
+#[cfg(target_os = "linux")]
+pub const SYS_CLOSE_RANGE: libc::c_long = 436;
+
 #[cfg(target_os = "freebsd")]
 extern "C" {
     pub fn closefrom(lowfd: libc::c_int);
