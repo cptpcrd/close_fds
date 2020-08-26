@@ -12,7 +12,7 @@ pub use fditer::FdIter;
 /// at `minfd`.
 #[inline]
 pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
-    fditer::iter_fds(minfd, false)
+    fditer::iter_fds(minfd, false, false)
 }
 
 /// Identical to `iter_open_fds()`, but may -- for efficiency -- yield invalid
@@ -52,7 +52,7 @@ pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
 /// `metadata()` (or any other methods) on random file descriptors.
 #[inline]
 pub fn iter_possible_fds(minfd: libc::c_int) -> FdIter {
-    fditer::iter_fds(minfd, true)
+    fditer::iter_fds(minfd, true, false)
 }
 
 /// Identical to `close_open_fds()`, but sets the `FD_CLOEXEC` flag on the file descriptors instead

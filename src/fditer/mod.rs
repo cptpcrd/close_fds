@@ -1,7 +1,8 @@
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
 mod dirfd;
 
-pub fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
+#[allow(unused_variables)]
+pub fn iter_fds(mut minfd: libc::c_int, possible: bool, fast_maxfd: bool) -> FdIter {
     if minfd < 0 {
         minfd = 0;
     }
@@ -10,6 +11,8 @@ pub fn iter_fds(mut minfd: libc::c_int, possible: bool) -> FdIter {
         curfd: minfd,
         possible,
         maxfd: -1,
+        #[cfg(target_os = "freebsd")]
+        fast_maxfd,
         #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
         dirfd_iter: dirfd::DirFdIter::open(minfd),
     }
@@ -21,10 +24,16 @@ pub struct FdIter {
     curfd: libc::c_int,
     possible: bool,
     maxfd: libc::c_int,
+    /// If this is true, it essentially means "don't try to determine a more accurate maxfd using
+    /// significantly slower code." On some systems. `close_open_fds()` passes this as true because
+    /// the system has a working closefrom() and at some point it can just close the rest of the
+    /// file descriptors in one go.
+    #[cfg(target_os = "freebsd")]
+    fast_maxfd: bool,
 }
 
 impl FdIter {
-    fn get_maxfd_direct() -> libc::c_int {
+    fn get_maxfd_direct(&self) -> libc::c_int {
         #[cfg(target_os = "netbsd")]
         {
             // NetBSD allows us to get the maximum open file descriptor
@@ -36,9 +45,12 @@ impl FdIter {
         }
 
         #[cfg(target_os = "freebsd")]
-        {
+        if !self.fast_maxfd {
             // On FreeBSD, we can get the *number* of open file descriptors. From that,
             // we can use an is_fd_valid() loop to get the maximum open file descriptor.
+
+            // However, we don't try this if fast_maxfd is true, because this method can be really
+            // slow.
 
             let mib = [
                 libc::CTL_KERN,
@@ -151,7 +163,7 @@ impl FdIter {
 
     fn get_maxfd(&mut self) -> libc::c_int {
         if self.maxfd < 0 {
-            self.maxfd = Self::get_maxfd_direct();
+            self.maxfd = self.get_maxfd_direct();
         }
 
         self.maxfd

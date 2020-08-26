@@ -58,7 +58,20 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
         return;
     }
 
-    let mut fditer = crate::iter_possible_fds(minfd);
+    let mut fditer = crate::fditer::iter_fds(
+        minfd,
+        // Include "possible" file descriptors
+        true,
+        // On these systems, tell iter_fds() to prefer speed over accuracy when determining maxfd
+        // (if it has to use a maxfd loop) -- these systems have a working closefrom(), so we can
+        // just call that once we pass the end of keep_fds.
+        cfg!(any(
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd",
+            target_os = "dragonfly"
+        )),
+    );
 
     // We have to use a while loop so we can drop() the iterator in the
     // closefrom() case
