@@ -107,7 +107,7 @@ impl FdIter {
         // We know the number of open file descriptors; let's use that to
         // try to find the largest open file descriptor.
 
-        for fd in 0..(nfds * 3) {
+        for fd in 0..(nfds * 2) {
             if crate::util::is_fd_valid(fd) {
                 // Valid file descriptor
                 nfds_found += 1;
