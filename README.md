@@ -34,7 +34,7 @@ A small Rust library that makes it easy to close all open file descriptors.
 
 ## OS-specific notes
 
-Here is a list of the methods that `iter_open_fds()`, `iter_possible_fds()`, and `close_open_fds()` will try on various platforms to improve performance when listing the open file descriptors:
+Here is a list of the methods that `iter_open_fds()`, `iter_possible_fds()`, `close_open_fds()`, and `set_fds_cloexec()` will try on various platforms to improve performance when listing the open file descriptors:
 
 - Linux
     - `/proc/self/fd` if `/proc` is mounted (very efficient)
