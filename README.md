@@ -8,6 +8,43 @@
 
 A small Rust library that makes it easy to close all open file descriptors.
 
+## Usage
+
+Add to your `Cargo.toml`:
+
+```
+[dependencies]
+closefds = "0.2"
+```
+
+In your application:
+
+```
+use close_fds::close_open_fds;
+
+fn main() {
+    // ...
+    unsafe {
+        close_open_fds(3, &[]);
+    }
+    // ...
+}
+```
+
+**IMPORTANT**: Please read the documentation for [`close_open_fds()`](http://docs.rs/close_fds/latest/close_fds/fn.close_open_fds.html) for an explanation of why `close_open_fds()` is `unsafe`.
+
+The first argument to `close_open_fds()` is the lowest file descriptor that should be closed; all file descriptors less than this will be left open. The second argument is a slice containing a list of additional file descriptors that should be left open. (Note: `close_open_fds()` will be more efficient if this list is sorted, especially if it is more than a few elements long.)
+
+`close_open_fds()` *always* succeeds. If one method of closing the file descriptors fails, it will fall back on another.
+
+Some other helpful functions in this crate (more details in the [documentation](http://docs.rs/close_fds/latest)):
+
+- `set_fds_cloexec(minfd, keep_fds)`: Identical to `close_open_fds()`, but sets the `FD_CLOEXEC` flag on the file descriptors instead of closing them.
+- `iter_open_fds(minfd)`: Iterates over all open file descriptors for the current process, starting at `minfd`.
+- `iter_possible_fds(minfd)` (not recommended): Identical to `iter_open_fds()`, but may yield invalid file descriptors; the caller is responsible for checking whether they are valid.
+
+Note that `close_open_fds()` should be preferred whenever possible, as it may be able to take advantage of platform-specific optimizations that these other functions cannot.
+
 ## OS support
 
 `close_fds` has three OS support tiers, similar to [Rust's support tiers](https://forge.rust-lang.org/release/platform-support.html):
