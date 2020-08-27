@@ -14,7 +14,7 @@ Add to your `Cargo.toml`:
 
 ```
 [dependencies]
-closefds = "0.2"
+close_fds = "0.2"
 ```
 
 In your application:
@@ -31,7 +31,7 @@ fn main() {
 }
 ```
 
-**IMPORTANT**: Please read the documentation for [`close_open_fds()`](http://docs.rs/close_fds/latest/close_fds/fn.close_open_fds.html) for an explanation of why `close_open_fds()` is `unsafe`.
+**IMPORTANT**: Please read the documentation for [`close_open_fds()`](http://docs.rs/close_fds/latest/close_fds/fn.close_open_fds.html) for an explanation of why it is `unsafe`.
 
 The first argument to `close_open_fds()` is the lowest file descriptor that should be closed; all file descriptors less than this will be left open. The second argument is a slice containing a list of additional file descriptors that should be left open. (Note: `close_open_fds()` will be more efficient if this list is sorted, especially if it is more than a few elements long.)
 
@@ -39,7 +39,7 @@ The first argument to `close_open_fds()` is the lowest file descriptor that shou
 
 Some other helpful functions in this crate (more details in the [documentation](http://docs.rs/close_fds/latest)):
 
-- `set_fds_cloexec(minfd, keep_fds)`: Identical to `close_open_fds()`, but sets the `FD_CLOEXEC` flag on the file descriptors instead of closing them.
+- `set_fds_cloexec(minfd, keep_fds)` (Unix-only): Identical to `close_open_fds()`, but sets the `FD_CLOEXEC` flag on the file descriptors instead of closing them.
 - `iter_open_fds(minfd)`: Iterates over all open file descriptors for the current process, starting at `minfd`.
 - `iter_possible_fds(minfd)` (not recommended): Identical to `iter_open_fds()`, but may yield invalid file descriptors; the caller is responsible for checking whether they are valid.
 
