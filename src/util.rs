@@ -5,6 +5,7 @@ pub fn inspect_keep_fds(keep_fds: &[libc::c_int]) -> (libc::c_int, bool) {
     let mut max_keep_fd = -1;
     let mut last_fd = -1;
     let mut fds_sorted = true;
+
     for fd in keep_fds.iter().cloned() {
         // Check for a new maximum file descriptor
         if fd > max_keep_fd {

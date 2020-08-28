@@ -121,6 +121,7 @@ impl DirFdIter {
                     )
                 } else {
                     // /dev/fd is probably a static directory
+
                     -1
                 }
             }
@@ -160,6 +161,7 @@ impl DirFdIter {
                         self.dirent_nbytes = nbytes as usize;
                         self.dirent_offset = 0;
                     }
+
                     // 0 -> EOF
                     core::cmp::Ordering::Equal => return Ok(None),
                     // < 0 -> Error
