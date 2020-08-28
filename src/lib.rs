@@ -67,18 +67,15 @@ pub fn set_fds_cloexec(minfd: libc::c_int, mut keep_fds: &[libc::c_int]) {
     for fd in iter_possible_fds(minfd) {
         if fd > max_keep_fd || !util::check_should_keep(&mut keep_fds, fd, fds_sorted) {
             // It's not in keep_fds
-            unsafe {
-                set_cloexec(fd);
+
+            let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+
+            if flags >= 0 && (flags & libc::FD_CLOEXEC) != libc::FD_CLOEXEC {
+                // fcntl(F_GETFD) succeeded, and it did *not* return the FD_CLOEXEC flag
+                unsafe {
+                    libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC);
+                }
             }
         }
-    }
-}
-
-#[cfg(unix)]
-unsafe fn set_cloexec(fd: libc::c_int) {
-    let flags = libc::fcntl(fd, libc::F_GETFD);
-    if flags >= 0 && (flags & libc::FD_CLOEXEC) != libc::FD_CLOEXEC {
-        // fcntl(F_GETFD) succeeded, and it did *not* return the FD_CLOEXEC flag
-        libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC);
     }
 }
