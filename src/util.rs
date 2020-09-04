@@ -47,7 +47,7 @@ pub fn is_wsl_1() -> bool {
     // It seems that on WSL 1 the kernel "release name" ends with "-Microsoft", and on WSL 2 the
     // release name ends with "-microsoft-standard". So we look for "Microsoft" at the end.
 
-    let mut uname: libc::utsname = unsafe { core::mem::zeroed() };
+    let mut uname = unsafe { core::mem::zeroed() };
 
     unsafe {
         libc::uname(&mut uname);
