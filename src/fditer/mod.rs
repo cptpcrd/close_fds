@@ -79,20 +79,12 @@ impl FdIter {
             }
         }
 
-        #[cfg(unix)]
         let fdlimit = unsafe { libc::sysconf(libc::_SC_OPEN_MAX) };
-        #[cfg(windows)]
-        let fdlimit = unsafe { crate::externs::getmaxstdio() };
 
         // Clamp it at 65536 because that's a LOT of file descriptors
-        // Also don't trust values below 1024 (512 on Windows)
+        // Also don't trust values below 1024
 
-        #[cfg(unix)]
-        const LOWER_FDLIMIT: libc::c_long = 1024;
-        #[cfg(windows)]
-        const LOWER_FDLIMIT: libc::c_int = 512;
-
-        if fdlimit <= 65536 && fdlimit >= LOWER_FDLIMIT {
+        if fdlimit <= 65536 && fdlimit >= 1024 {
             return fdlimit as libc::c_int - 1;
         }
 

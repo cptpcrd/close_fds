@@ -36,10 +36,6 @@
 /// As a result, this function first checks if `keep_fds` is sorted. If it is, the more
 /// efficient method can be employed. If not, it falls back on `.contains()`. which
 /// can be very slow.
-///
-/// # Windows support
-///
-/// On Windows, this only deals with file descriptors, NOT file handles.
 pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int]) {
     if minfd < 0 {
         minfd = 0;

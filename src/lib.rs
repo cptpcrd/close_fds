@@ -28,23 +28,20 @@ pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
 /// is valid. For example:
 ///
 /// ```
-/// #[cfg(unix)]
-/// {
-///     use std::os::unix::io::FromRawFd;
+/// use std::os::unix::io::FromRawFd;
 ///
-///     for fd in close_fds::iter_possible_fds(0) {
-///         let file = unsafe { std::fs::File::from_raw_fd(fd) };
-///         let _meta = match file.metadata() {
-///             Ok(m) => m,
-///             Err(e) if e.raw_os_error() == Some(libc::EBADF) => {
-///                 std::mem::forget(file);  // Don't try to close() it
-///                 continue;
-///             }
-///             Err(e) => panic!(e),
-///         };
+/// for fd in close_fds::iter_possible_fds(0) {
+///     let file = unsafe { std::fs::File::from_raw_fd(fd) };
+///     let _meta = match file.metadata() {
+///         Ok(m) => m,
+///         Err(e) if e.raw_os_error() == Some(libc::EBADF) => {
+///             std::mem::forget(file);  // Don't try to close() it
+///             continue;
+///         }
+///         Err(e) => panic!(e),
+///     };
 ///
-///         // ...
-///     }
+///     // ...
 /// }
 /// ```
 ///
@@ -56,11 +53,10 @@ pub fn iter_possible_fds(minfd: libc::c_int) -> FdIter {
 }
 
 /// Identical to `close_open_fds()`, but sets the `FD_CLOEXEC` flag on the file descriptors instead
-/// of closing them. (Unix-only)
+/// of closing them.
 ///
 /// On some platforms (most notably, some of the BSDs), this is significantly less efficient than
 /// `close_open_fds()`, and use of that function should be preferred when possible.
-#[cfg(unix)]
 pub fn set_fds_cloexec(minfd: libc::c_int, mut keep_fds: &[libc::c_int]) {
     let (max_keep_fd, fds_sorted) = util::inspect_keep_fds(keep_fds);
 

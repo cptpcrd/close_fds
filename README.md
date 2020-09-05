@@ -39,7 +39,7 @@ The first argument to `close_open_fds()` is the lowest file descriptor that shou
 
 Some other helpful functions in this crate (more details in the [documentation](http://docs.rs/close_fds/latest)):
 
-- `set_fds_cloexec(minfd, keep_fds)` (Unix-only): Identical to `close_open_fds()`, but sets the `FD_CLOEXEC` flag on the file descriptors instead of closing them.
+- `set_fds_cloexec(minfd, keep_fds)`: Identical to `close_open_fds()`, but sets the `FD_CLOEXEC` flag on the file descriptors instead of closing them.
 - `iter_open_fds(minfd)`: Iterates over all open file descriptors for the current process, starting at `minfd`.
 - `iter_possible_fds(minfd)` (not recommended): Identical to `iter_open_fds()`, but may yield invalid file descriptors; the caller is responsible for checking whether they are valid.
 
@@ -54,8 +54,6 @@ Note that `close_open_fds()` should be preferred whenever possible, as it may be
 - Linux (glibc and musl)
 - macOS
 - FreeBSD
-- Windows (MSVC and GNU toolchains)
-  Note: `close_fds` does NOT have support for closing open file *handles*; just file *descriptors*.
 
 #### Tier 2: "Guaranteed to build"  (built, but not tested, in CI)
 
@@ -85,6 +83,6 @@ Here is a list of the methods that `iter_open_fds()`, `iter_possible_fds()`, `cl
 
 On the BSDs, `close_open_fds()` may also call `closefrom()`, which is very efficient.
 
-If none of the methods listed above are available, it will fall back on a simple loop through every possible file descriptor number -- from `minfd` to `sysconf(_SC_OPEN_MAX)` (`getmaxstdio()` on Windows).
+If none of the methods listed above are available, it will fall back on a simple loop through every possible file descriptor number -- from `minfd` to `sysconf(_SC_OPEN_MAX)`.
 
 Note: The most common use case, `close_open_fds(3, &[])`, is very efficient on Linux (with `/proc` mounted), macOS, and all of the BSDs.

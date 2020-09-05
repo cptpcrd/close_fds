@@ -17,9 +17,3 @@ extern "C" {
 extern "C" {
     pub fn closefrom(fd: libc::c_int) -> libc::c_int;
 }
-
-#[cfg(windows)]
-extern "C" {
-    #[link_name = "_getmaxstdio"]
-    pub fn getmaxstdio() -> libc::c_int;
-}

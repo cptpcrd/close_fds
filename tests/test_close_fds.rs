@@ -1,13 +1,9 @@
-#[cfg(unix)]
+use std::os::unix::prelude::*;
+
 fn is_fd_open(fd: libc::c_int) -> bool {
     unsafe { libc::fcntl(fd, libc::F_GETFD) >= 0 }
 }
-#[cfg(windows)]
-fn is_fd_open(fd: libc::c_int) -> bool {
-    unsafe { libc::get_osfhandle(fd) >= 0 }
-}
 
-#[cfg(unix)]
 fn set_fd_cloexec(fd: libc::c_int, cloexec: bool) {
     let mut flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
     if flags < 0 {
@@ -26,7 +22,6 @@ fn set_fd_cloexec(fd: libc::c_int, cloexec: bool) {
     }
 }
 
-#[cfg(unix)]
 fn is_fd_cloexec(fd: libc::c_int) -> Option<bool> {
     let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
 
@@ -51,10 +46,7 @@ fn check_sorted<T: Ord>(items: &[T]) {
     }
 }
 
-#[cfg(unix)]
 fn run_basic_test(callback: fn(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int)) {
-    use std::os::unix::prelude::*;
-
     let f1 = std::fs::File::open("/").unwrap();
     let f2 = std::fs::File::open("/").unwrap();
     let f3 = std::fs::File::open("/").unwrap();
@@ -70,43 +62,6 @@ fn run_basic_test(callback: fn(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_
     assert!(!is_fd_open(fd3));
 
     callback(fd1, fd2, fd3);
-}
-
-#[cfg(windows)]
-fn run_basic_test(callback: fn(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int)) {
-    fn openfd() -> libc::c_int {
-        let path = std::ffi::CString::new(
-            std::env::current_exe()
-                .unwrap()
-                .into_os_string()
-                .into_string()
-                .unwrap()
-                .into_bytes(),
-        )
-        .unwrap();
-        let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY) };
-        assert!(fd >= 0, "{}", std::io::Error::last_os_error());
-        fd
-    }
-
-    let fd1 = openfd();
-    let fd2 = openfd();
-    let fd3 = openfd();
-
-    unsafe {
-        libc::close(fd3);
-    }
-
-    assert!(is_fd_open(fd1));
-    assert!(is_fd_open(fd2));
-    assert!(!is_fd_open(fd3));
-
-    callback(fd1, fd2, fd3);
-
-    unsafe {
-        libc::close(fd1);
-        libc::close(fd2);
-    }
 }
 
 fn iter_open_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
@@ -248,39 +203,16 @@ fn close_fds_keep2_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
 fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
     let mut openfds = Vec::new();
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::prelude::*;
+    for _ in 0..150 {
+        let fd = std::fs::File::open("/").unwrap().into_raw_fd();
+        openfds.push(fd);
 
-        for _ in 0..150 {
-            let fd = std::fs::File::open("/").unwrap().into_raw_fd();
-            openfds.push(fd);
-
-            // Test that is_fd_cloexec() and set_fd_cloexec() behave properly
-            assert_eq!(is_fd_cloexec(fd), Some(true));
-            set_fd_cloexec(fd, false);
-            assert_eq!(is_fd_cloexec(fd), Some(false));
-            set_fd_cloexec(fd, true);
-            assert_eq!(is_fd_cloexec(fd), Some(true));
-        }
-    }
-
-    #[cfg(windows)]
-    {
-        let path = std::ffi::CString::new(
-            std::env::current_exe()
-                .unwrap()
-                .into_os_string()
-                .into_string()
-                .unwrap()
-                .into_bytes(),
-        )
-        .unwrap();
-        for _ in 0..150 {
-            let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY) };
-            assert!(fd >= 0, "{}", std::io::Error::last_os_error());
-            openfds.push(fd);
-        }
+        // Test that is_fd_cloexec() and set_fd_cloexec() behave properly
+        assert_eq!(is_fd_cloexec(fd), Some(true));
+        set_fd_cloexec(fd, false);
+        assert_eq!(is_fd_cloexec(fd), Some(false));
+        set_fd_cloexec(fd, true);
+        assert_eq!(is_fd_cloexec(fd), Some(true));
     }
 
     let lowfd = openfds[0];
@@ -295,7 +227,6 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
         }
         closedfds.push(fd);
 
-        #[cfg(unix)]
         assert_eq!(is_fd_cloexec(fd), None);
     }
 
@@ -306,33 +237,26 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
     cur_open_fds = close_fds::iter_open_fds(lowfd).collect();
     check_sorted(&cur_open_fds);
     for fd in openfds.iter() {
-        #[cfg(unix)]
         assert_eq!(is_fd_cloexec(*fd), Some(true));
-
         assert!(cur_open_fds.contains(fd));
     }
     for fd in closedfds.iter() {
-        #[cfg(unix)]
         assert_eq!(is_fd_cloexec(*fd), None);
-
         assert!(!cur_open_fds.contains(fd));
     }
 
-    #[cfg(unix)]
-    {
-        // Set them all as non-close-on-exec
-        for fd in openfds.iter() {
-            set_fd_cloexec(*fd, false);
-            assert_eq!(is_fd_cloexec(*fd), Some(false));
-        }
+    // Set them all as non-close-on-exec
+    for fd in openfds.iter() {
+        set_fd_cloexec(*fd, false);
+        assert_eq!(is_fd_cloexec(*fd), Some(false));
+    }
 
-        // Make them all close-on-exec with set_fds_cloexec()
-        close_fds::set_fds_cloexec(lowfd, &[]);
+    // Make them all close-on-exec with set_fds_cloexec()
+    close_fds::set_fds_cloexec(lowfd, &[]);
 
-        // Now make sure they're all close-on-exec
-        for fd in openfds.iter() {
-            assert_eq!(is_fd_cloexec(*fd), Some(true));
-        }
+    // Now make sure they're all close-on-exec
+    for fd in openfds.iter() {
+        assert_eq!(is_fd_cloexec(*fd), Some(true));
     }
 
     // Now, let's only keep a few file descriptors open.
@@ -370,42 +294,6 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
 #[test]
 fn run_tests() {
     // Run all tests here because these tests can't be run in parallel
-
-    #[cfg(windows)]
-    {
-        // On Windows, we have to set an "invalid parameter handler" to keep our
-        // is_fd_open() helper from segfaulting if the file descriptor is invalid.
-
-        extern "C" fn handle_invalid_param(
-            _expression: *const libc::wchar_t,
-            _function: *const libc::wchar_t,
-            _file: *const libc::wchar_t,
-            _line: libc::c_uint,
-            _p_reserved: libc::uintptr_t,
-        ) {
-        }
-        extern "C" {
-            fn _set_invalid_parameter_handler(
-                p_new: extern "C" fn(
-                    expression: *const libc::wchar_t,
-                    function: *const libc::wchar_t,
-                    file: *const libc::wchar_t,
-                    line: libc::c_uint,
-                    p_reserved: libc::uintptr_t,
-                ),
-            ) -> extern "C" fn(
-                expression: *const libc::wchar_t,
-                function: *const libc::wchar_t,
-                file: *const libc::wchar_t,
-                line: libc::c_uint,
-                p_reserved: libc::uintptr_t,
-            );
-        }
-
-        unsafe {
-            _set_invalid_parameter_handler(handle_invalid_param);
-        }
-    }
 
     run_basic_test(iter_open_fds_test);
 

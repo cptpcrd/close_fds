@@ -68,16 +68,9 @@ pub fn is_wsl_1() -> bool {
     uname_release.ends_with(b"Microsoft")
 }
 
-#[cfg(unix)]
 #[inline]
 pub fn is_fd_valid(fd: libc::c_int) -> bool {
     unsafe { libc::fcntl(fd, libc::F_GETFD) >= 0 }
-}
-
-#[cfg(windows)]
-#[inline]
-pub fn is_fd_valid(fd: libc::c_int) -> bool {
-    unsafe { libc::get_osfhandle(fd) >= 0 }
 }
 
 #[cfg(test)]
