@@ -84,11 +84,7 @@ impl FdIter {
         // Clamp it at 65536 because that's a LOT of file descriptors
         // Also don't trust values below 1024
 
-        if fdlimit <= 65536 && fdlimit >= 1024 {
-            return fdlimit as libc::c_int - 1;
-        }
-
-        65536
+        fdlimit.max(1024).min(65536) as libc::c_int - 1
     }
 
     #[cfg(target_os = "freebsd")]
