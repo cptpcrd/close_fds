@@ -5,7 +5,9 @@
 ///
 /// This function is NOT safe to use if other threads are interacting with files,
 /// networking, or anything else that could possibly involve file descriptors in
-/// any way, shape, or form.
+/// any way, shape, or form. (Note: On some systems, file descriptor use may be more
+/// common than you think! For example, on Linux with musl libc,
+/// `std::fs::canonicalize()` will open a file descriptor to the given path.)
 ///
 /// In addition, some objects, such as `std::fs::File`, may open file descriptors
 /// and then assume that they will remain open. This function, by closing those
