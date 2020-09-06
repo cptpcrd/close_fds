@@ -8,24 +8,20 @@ mod util;
 pub use close::close_open_fds;
 pub use fditer::FdIter;
 
-/// Iterate over all open file descriptors for the current process, starting
-/// at `minfd`.
+/// Iterate over all open file descriptors for the current process, starting at `minfd`.
 #[inline]
 pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
     fditer::iter_fds(minfd, false, false)
 }
 
-/// Identical to `iter_open_fds()`, but may -- for efficiency -- yield invalid
-/// file descriptors.
+/// Identical to `iter_open_fds()`, but may -- for efficiency -- yield invalid file descriptors.
 ///
-/// With this function, the caller is responsible for checking if the file
-/// descriptors are valid.
+/// With this function, the caller is responsible for checking if the file descriptors are valid.
 ///
 /// # Proper usage
 ///
-/// You should only use this function instead of `iter_open_fds()` if you
-/// immediately perform an operation that implicitly checks if the file descriptor
-/// is valid. For example:
+/// You should only use this function instead of `iter_open_fds()` if you immediately perform an
+/// operation that implicitly checks if the file descriptor is valid. For example:
 ///
 /// ```
 /// use std::os::unix::io::FromRawFd;
@@ -45,8 +41,8 @@ pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
 /// }
 /// ```
 ///
-/// Note that this example is NOT intended to imply that you *should* be calling
-/// `metadata()` (or any other methods) on random file descriptors.
+/// Note that this example is NOT intended to imply that you *should* be calling `metadata()` (or
+/// any other methods) on random file descriptors.
 #[inline]
 pub fn iter_possible_fds(minfd: libc::c_int) -> FdIter {
     fditer::iter_fds(minfd, true, false)

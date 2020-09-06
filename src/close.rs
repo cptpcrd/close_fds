@@ -1,41 +1,37 @@
-/// Close all open file descriptors starting at `minfd`, except for the file
-/// descriptors in `keep_fds`.
+/// Close all open file descriptors starting at `minfd`, except for the file descriptors in
+/// `keep_fds`.
 ///
 /// # Safety
 ///
-/// This function is NOT safe to use if other threads are interacting with files,
-/// networking, or anything else that could possibly involve file descriptors in
-/// any way, shape, or form. (Note: On some systems, file descriptor use may be more
-/// common than you think! For example, on Linux with musl libc,
-/// `std::fs::canonicalize()` will open a file descriptor to the given path.)
+/// This function is NOT safe to use if other threads are interacting with files, networking, or
+/// anything else that could possibly involve file descriptors in any way, shape, or form. (Note: On
+/// some systems, file descriptor use may be more common than you think! For example, on Linux with
+/// musl libc, `std::fs::canonicalize()` will open a file descriptor to the given path.)
 ///
-/// In addition, some objects, such as `std::fs::File`, may open file descriptors
-/// and then assume that they will remain open. This function, by closing those
-/// file descriptors, violates those assumptions.
+/// In addition, some objects, such as `std::fs::File`, may open file descriptors and then assume
+/// that they will remain open. This function, by closing those file descriptors, violates those
+/// assumptions.
 ///
-/// This function is safe to use if it can be verified that these are not concerns.
-/// For example, it *should* be safe at startup or just before an `exec()`. At all
-/// other times, exercise extreme caution when using this function, as it may lead
-/// to race conditions and/or security issues.
+/// This function is safe to use if it can be verified that these are not concerns. For example, it
+/// *should* be safe at startup or just before an `exec()`. At all other times, exercise extreme
+/// caution when using this function, as it may lead to race conditions and/or security issues.
 ///
 /// # Efficiency
 ///
 /// ## Efficiency of using `keep_fds`
 ///
-/// **TL;DR**: If you're going to be passing more than a few file descriptors in
-/// `keep_fds`, sort the slice first for best performance.
+/// **TL;DR**: If you're going to be passing more than a few file descriptors in `keep_fds`, sort
+/// the slice first for best performance.
 ///
-/// On some systems, the `keep_fds` list may see massive numbers of lookups,
-/// especially if it contains high-numbered file descriptors.
+/// On some systems, the `keep_fds` list may see massive numbers of lookups, especially if it
+/// contains high-numbered file descriptors.
 ///
-/// If `keep_fds` is sorted, since `iter_open_fds()` goes in ascending order it is easy
-/// to check for the presence of a given file descriptor in `keep_fds`. However,
-/// because `close_fds` is a `#![no_std]` crate, it can't allocate memory for a *copy*
-/// of `keep_fds` that it can sort.
+/// If `keep_fds` is sorted, since `iter_open_fds()` goes in ascending order it is easy to check
+/// for the presence of a given file descriptor in `keep_fds`. However, because `close_fds` is a
+/// `#![no_std]` crate, it can't allocate memory for a *copy* of `keep_fds` that it can sort.
 ///
-/// As a result, this function first checks if `keep_fds` is sorted. If it is, the more
-/// efficient method can be employed. If not, it falls back on `.contains()`. which
-/// can be very slow.
+/// As a result, this function first checks if `keep_fds` is sorted. If it is, the more efficient
+/// method can be employed. If not, it falls back on `.contains()`. which can be very slow.
 pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int]) {
     if minfd < 0 {
         minfd = 0;
@@ -50,8 +46,8 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
         target_os = "dragonfly"
     ))]
     if max_keep_fd < minfd {
-        // On the BSDs, if all the file descriptors in keep_fds are less than
-        // minfd (or if keep_fds is empty), we can just call closefrom()
+        // On the BSDs, if all the file descriptors in keep_fds are less than minfd (or if keep_fds
+        // is empty), we can just call closefrom()
         crate::externs::closefrom(minfd);
         return;
     }
@@ -71,8 +67,7 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
         )),
     );
 
-    // We have to use a while loop so we can drop() the iterator in the
-    // closefrom() case
+    // We have to use a while loop so we can drop() the iterator in the closefrom() case
     #[allow(clippy::while_let_on_iterator)]
     while let Some(fd) = fditer.next() {
         if fd > max_keep_fd {

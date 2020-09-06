@@ -1,6 +1,5 @@
 pub fn inspect_keep_fds(keep_fds: &[libc::c_int]) -> (libc::c_int, bool) {
-    // Get the maximum file descriptor from the list, and also check if it's
-    // sorted.
+    // Get the maximum file descriptor from the list, and also check if it's sorted.
 
     let mut max_keep_fd = -1;
     let mut last_fd = -1;
@@ -24,12 +23,11 @@ pub fn inspect_keep_fds(keep_fds: &[libc::c_int]) -> (libc::c_int, bool) {
 
 pub fn check_should_keep(keep_fds: &mut &[libc::c_int], fd: libc::c_int, fds_sorted: bool) -> bool {
     if fds_sorted {
-        // If the file descriptor list is sorted, we can do a more efficient
-        // lookup
+        // If the file descriptor list is sorted, we can do a more efficient lookup
 
         // Skip over any elements less than the current file descriptor.
-        // For example if keep_fds is [0, 1, 4, 5] and fd is either 3 or 4,
-        // we can skip over 0 and 1 -- those cases have been covered already.
+        // For example if keep_fds is [0, 1, 4, 5] and fd is either 3 or 4, we can skip over 0 and 1
+        // -- those cases have been covered already.
         if let Some(index) = keep_fds.iter().position(|&x| x >= fd) {
             *keep_fds = &(*keep_fds)[index..];
         }
@@ -59,8 +57,8 @@ pub fn is_wsl_1() -> bool {
         .position(|c| *c == 0)
         .unwrap_or(uname.release.len());
 
-    // uname.release is an array of `libc::c_char`s. `libc::c_char` may be either a u8 or an
-    // i8, so unfortunately we have to use unsafe operations to get a reference as a &[u8].
+    // uname.release is an array of `libc::c_char`s. `libc::c_char` may be either a u8 or an i8, so
+    // unfortunately we have to use unsafe operations to get a reference as a &[u8].
     let uname_release = unsafe {
         core::slice::from_raw_parts(uname.release.as_ptr() as *const u8, uname_release_len)
     };

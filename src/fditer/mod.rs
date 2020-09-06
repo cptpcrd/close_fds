@@ -46,8 +46,8 @@ impl FdIter {
 
         #[cfg(target_os = "freebsd")]
         if !self.fast_maxfd {
-            // On FreeBSD, we can get the *number* of open file descriptors. From that,
-            // we can use an is_fd_valid() loop to get the maximum open file descriptor.
+            // On FreeBSD, we can get the *number* of open file descriptors. From that, we can use
+            // an is_fd_valid() loop to get the maximum open file descriptor.
 
             // However, we don't try this if fast_maxfd is true, because this method can be really
             // slow.
@@ -89,8 +89,8 @@ impl FdIter {
 
     #[cfg(target_os = "freebsd")]
     fn nfds_to_maxfd(nfds: libc::c_int) -> Option<libc::c_int> {
-        // Given the number of open file descriptors, return the largest
-        // open file descriptor (or None if it can't be reasonably determined).
+        // Given the number of open file descriptors, return the largest open file descriptor (or
+        // None if it can't be reasonably determined).
 
         if nfds == 0 {
             // No open file descriptors -- nothing to do!
@@ -104,8 +104,8 @@ impl FdIter {
 
         let mut nfds_found = 0;
 
-        // We know the number of open file descriptors; let's use that to
-        // try to find the largest open file descriptor.
+        // We know the number of open file descriptors; let's use that to try to find the largest
+        // open file descriptor.
 
         for fd in 0..(nfds * 2) {
             if crate::util::is_fd_valid(fd) {
@@ -114,37 +114,33 @@ impl FdIter {
 
                 if nfds_found >= nfds {
                     // We've found all the open file descriptors.
-                    // We now know that the current `fd` is the largest open
-                    // file descriptor
+                    // We now know that the current `fd` is the largest open file descriptor
                     return Some(fd);
                 }
             }
         }
 
-        // We haven't found all of the open file descriptors yet, but
-        // it seems like we *should* have.
+        // We haven't found all of the open file descriptors yet, but it seems like we *should*
+        // have.
         //
         // This usually means one of two things:
         //
-        // 1. The process opened a large number of file descriptors, then
-        //    closed many of them. However, it left several of the high-numbered
-        //    file descriptors open. (For example, consider the case where the
-        //    open file descriptors are 0, 1, 2, 50, and 100. nfds=5, but the
-        //    highest open file descriptor is actually 100!)
-        // 2. The 'nfds' method is vulnerable to a race condition: if a
-        //    file descriptor is closed after the number of open file descriptors
-        //    has been obtained, but before the fcntl() loop reaches that file
-        //    descriptor, then the loop will never find all of the open file
+        // 1. The process opened a large number of file descriptors, then closed many of them.
+        //    However, it left several of the high-numbered file descriptors open. (For example,
+        //    consider the case where the open file descriptors are 0, 1, 2, 50, and 100. nfds=5,
+        //    but the highest open file descriptor is actually 100!)
+        // 2. The 'nfds' method is vulnerable to a race condition: if a file descriptor is closed
+        //    after the number of open file descriptors has been obtained, but before the fcntl()
+        //    loop reaches that file descriptor, then the loop will never find all of the open file
         //    descriptors because it will be stuck at n_fds_found = nfds-1.
-        //    If this happens, without this check the loop would essentially become
-        //    an infinite loop.
-        //    (For example, consider the case where the open file descriptors are
-        //    0, 1, 2, and 3. If file descriptor 3 is closed before the fd=3
-        //    iteration, then we will be stuck at n_fds_found=3 and will never
-        //    be able to find the 4th file descriptor.)
+        //    If this happens, without this check the loop would essentially become an infinite
+        //    loop.
+        //    (For example, consider the case where the open file descriptors are 0, 1, 2, and 3. If
+        //    file descriptor 3 is closed before the fd=3 iteration, then we will be stuck at
+        //    n_fds_found=3 and will never be able to find the 4th file descriptor.)
         //
-        // Error on the side of caution (case 2 is dangerous) and let the caller
-        // select another method.
+        // Error on the side of caution (case 2 is dangerous) and let the caller select another
+        // method.
 
         None
     }
@@ -179,11 +175,9 @@ impl Iterator for FdIter {
 
                 Ok(None) => return None,
 
-                Err(_) => {
-                    // Something went wrong. Close the directory file descriptor and reset it
-                    // so we don't try to use it again.
-                    drop(self.dirfd_iter.take());
-                }
+                // Something went wrong. Close the directory file descriptor and fall back on a
+                // maxfd loop
+                Err(_) => drop(self.dirfd_iter.take()),
             }
         }
 
@@ -196,8 +190,8 @@ impl Iterator for FdIter {
             // Increment it for next time
             self.curfd += 1;
 
-            // If we weren't given the "possible" flag, we have to check that it's a valid
-            // file descriptor first.
+            // If we weren't given the "possible" flag, we have to check that it's a valid file
+            // descriptor first.
             if self.possible || crate::util::is_fd_valid(fd) {
                 return Some(fd);
             }
