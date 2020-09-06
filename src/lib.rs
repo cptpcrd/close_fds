@@ -5,8 +5,8 @@ mod fditer;
 mod sys;
 mod util;
 
-pub use close::close_open_fds;
-pub use fditer::FdIter;
+pub use close::{close_open_fds, is_close_fds_fast};
+pub use fditer::{is_iter_fds_fast, FdIter};
 
 /// Iterate over all open file descriptors for the current process, starting at `minfd`. The file
 /// descriptors are guaranteed to be returned in ascending order.

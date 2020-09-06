@@ -33,6 +33,58 @@ pub fn iter_fds(mut minfd: libc::c_int, possible: bool, skip_nfds: bool) -> FdIt
     }
 }
 
+/// Returns whether `iter_open_fds()` (and `iter_possible_fds()`) are able to use a more efficient
+/// implementation on the current system.
+///
+/// (Note: This also applies to `set_fds_cloexec()`, since it just uses `iter_possible_fds()` and
+/// cannot perform any optimizations beyond what `iter_possible_fds()` does.)
+///
+/// Essentially, this function returns true if it is possible to iterate through all open file
+/// descriptors without simply using a massive `for` loop through every possible file descriptor
+/// (which is obviously very slow).
+///
+/// This could mean that it's possible to list the open file descriptors directly (on Linux with
+/// `/proc/self/fd`, on macOS and possibly FreeBSD with `/dev/fd`, and on Solaris/Illumos with
+/// either of these), or it could mean that the `for` loop can be constrained to a more reasonable
+/// limit (such as on NetBSD, where `fcntl(0, F_MAXFD)` will give you the largest open file
+/// descriptor).
+///
+/// Note also that this function may actually try to probe the interface that would be used, to see
+/// if it is present. For example, on Linux/macOS/FreeBSD/Solaris/Illumos it will actually try to
+/// open `/proc/self/fd` or `/dev/fd`. As a result, the return value of this function may change
+/// at runtime if certain operations are performed on the system.
+#[allow(clippy::needless_return)]
+#[inline]
+pub fn is_iter_fds_fast() -> bool {
+    // Note that we don't take the "nfds" strategy on FreeBSD/OpenBSD into account. This is on
+    // purpose: that strategy *may* improve efficiency, but it isn't very reliable.
+
+    #[cfg(target_os = "netbsd")]
+    return true;
+
+    // Opening a file descriptor here is perhaps a bit wasteful, since we could just try and stat()
+    // the directory. However, some of the special logic, like the /dev and /dev/fd stat() checks on
+    // FreeBSD, would have to be duplicated if we did that.
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "solaris",
+        target_os = "illumos",
+    ))]
+    return dirfd::DirFdIter::open(0).is_some();
+
+    #[cfg(not(any(
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "solaris",
+        target_os = "illumos",
+    )))]
+    return false;
+}
+
 /// An iterator over the current process's file descriptors.
 ///
 /// This can be created with one of the "iter" functions, such as:

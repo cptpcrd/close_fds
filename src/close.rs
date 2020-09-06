@@ -101,3 +101,31 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
         }
     }
 }
+
+/// Returns whether `close_open_fds()` is able to use a more efficient implementation on the current
+/// system.
+///
+/// See [`is_iter_fds_fast`] for more details about what this means (though obviously this function
+/// returns values for `close_open_fds()`, not
+/// `iter_open_fds()`/`iter_possible_fds()`/`set_fds_cloexec()`).
+///
+/// [`is_iter_fds_fast`]: ./fn.is_iter_fds_fast.html
+#[inline]
+#[allow(clippy::needless_return)]
+pub fn is_close_fds_fast() -> bool {
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "dragonfly",
+    ))]
+    return true;
+
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "dragonfly",
+    )))]
+    return crate::fditer::is_iter_fds_fast();
+}
