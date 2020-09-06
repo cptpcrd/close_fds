@@ -55,7 +55,7 @@ pub fn is_wsl_1() -> bool {
         .release
         .iter()
         .position(|c| *c == 0)
-        .unwrap_or(uname.release.len());
+        .unwrap_or_else(|| uname.release.len());
 
     // uname.release is an array of `libc::c_char`s. `libc::c_char` may be either a u8 or an i8, so
     // unfortunately we have to use unsafe operations to get a reference as a &[u8].
