@@ -8,7 +8,23 @@ mod util;
 pub use close::close_open_fds;
 pub use fditer::FdIter;
 
-/// Iterate over all open file descriptors for the current process, starting at `minfd`.
+/// Iterate over all open file descriptors for the current process, starting at `minfd`. The file
+/// descriptors are guaranteed to be returned in ascending order.
+///
+/// # Warnings
+///
+/// 1. Some of the file descriptors yielded by this iterator may be in active use by other sections
+///    of code. Be very careful about which operations you perform on them.
+/// 2. File descriptors that are opened during iteration may or may not be included in the results
+///    (exact behavior is platform-specific and depends on several factors).
+/// 3. Closing file descriptors during iteration will not affect the iterator's ability to list
+///    other open file descriptors (if it does, that is a bug). However, in most cases you should
+///    use [`close_open_fds()`] to do this.
+/// 4. If your program is multi-threaded, this is vulnerable to race conditions; a file descriptor
+///    returned by this iterator may not be valid by the time your code tries to do something with
+///    it.
+///
+/// [`close_open_fds()`]: ./fn.close_open_fds.html
 #[inline]
 pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
     fditer::iter_fds(minfd, false, false)
@@ -42,7 +58,10 @@ pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
 /// ```
 ///
 /// Note that this example is NOT intended to imply that you *should* be calling `metadata()` (or
-/// any other methods) on random file descriptors.
+/// any other methods) on random file descriptors. Most of the warnings about [`iter_open_fds()`]
+/// apply to this function as well.
+///
+/// [`iter_open_fds()`]: ./fn.iter_open_fds.html
 #[inline]
 pub fn iter_possible_fds(minfd: libc::c_int) -> FdIter {
     fditer::iter_fds(minfd, true, false)
