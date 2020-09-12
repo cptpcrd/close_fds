@@ -197,6 +197,11 @@ impl DirFdIter {
             }
         }
     }
+
+    pub fn size_hint(&self) -> (usize, Option<usize>) {
+        // Unfortunately, we can't be more specific than this
+        (0, None)
+    }
 }
 
 impl Drop for DirFdIter {

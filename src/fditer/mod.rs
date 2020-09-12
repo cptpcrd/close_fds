@@ -200,4 +200,92 @@ impl Iterator for FdIter {
         // Exhausted the range
         None
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+        if let Some(dfd_iter) = self.dirfd_iter.as_ref() {
+            // Delegate to the directory file descriptor
+            return dfd_iter.size_hint();
+        }
+
+        if self.maxfd >= 0 {
+            // maxfd is set; we can give an upper bound by comparing to curfd
+            let diff = (self.maxfd as usize + 1).saturating_sub(self.curfd as usize);
+
+            // If we were given the "possible" flag, then this is also the lower limit.
+            (if self.possible { diff } else { 0 }, Some(diff))
+        } else {
+            // Unknown
+            (0, None)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_size_hint_open() {
+        test_size_hint_generic(iter_fds(0, false, false));
+        test_size_hint_generic(iter_fds(0, false, true));
+    }
+
+    #[test]
+    fn test_size_hint_possible() {
+        test_size_hint_generic(iter_fds(0, true, false));
+        test_size_hint_generic(iter_fds(0, true, true));
+    }
+
+    fn test_size_hint_generic(mut fditer: FdIter) {
+        let (mut init_low, mut init_high) = fditer.size_hint();
+        if let Some(init_high) = init_high {
+            // Sanity check
+            assert!(init_high >= init_low);
+        }
+
+        let mut i = 0;
+        while let Some(_fd) = fditer.next() {
+            let (cur_low, cur_high) = fditer.size_hint();
+
+            // Adjust them so they're comparable to init_low and init_high
+            let adj_low = cur_low + i + 1;
+            let adj_high = if let Some(cur_high) = cur_high {
+                // Sanity check
+                assert!(cur_high >= cur_low);
+
+                Some(cur_high + i + 1)
+            } else {
+                None
+            };
+
+            // Now we adjust init_low and init_high to be the most restrictive limits that we've
+            // received so far.
+            if adj_low > init_low {
+                init_low = adj_low;
+            }
+
+            if let Some(adj_high) = adj_high {
+                if let Some(ihigh) = init_high {
+                    if adj_high < ihigh {
+                        init_high = Some(adj_high);
+                    }
+                } else {
+                    init_high = Some(adj_high);
+                }
+            }
+
+            i += 1;
+        }
+
+        // At the end, the lower boundary should be 0. The upper boundary can be anything.
+        let (final_low, _) = fditer.size_hint();
+        assert_eq!(final_low, 0);
+
+        // Now make sure that the actual count falls within the boundaries we were given
+        assert!(i >= init_low);
+        if let Some(init_high) = init_high {
+            assert!(i <= init_high);
+        }
+    }
 }
