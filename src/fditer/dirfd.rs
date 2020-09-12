@@ -150,6 +150,12 @@ impl DirFdIter {
         }
     }
 
+    #[inline]
+    #[allow(clippy::cast_ptr_alignment)] // We trust the kernel not to make us segfault
+    unsafe fn get_entry(&self, offset: usize) -> &RawDirent {
+        &*(self.dirents.as_ptr().add(offset) as *const RawDirent)
+    }
+
     pub fn next(&mut self) -> Result<Option<libc::c_int>, ()> {
         loop {
             if self.dirent_offset >= self.dirent_nbytes {
@@ -173,21 +179,22 @@ impl DirFdIter {
             // This's probably the case, considering that the kernel probably stores them in that
             // order.
 
-            #[allow(clippy::cast_ptr_alignment)] // We trust the kernel not to make us segfault
-            let entry =
-                unsafe { &*(self.dirents.as_ptr().add(self.dirent_offset) as *const RawDirent) };
-
-            // Adjust the offset for next time
-            self.dirent_offset += entry.d_reclen as usize;
+            let entry = unsafe { self.get_entry(self.dirent_offset) };
 
             // Try to parse the file descriptor as an integer
-            if let Some(fd) = parse_int_bytes(
+            let fd = parse_int_bytes(
                 entry
                     .d_name
                     .iter()
                     .take_while(|c| **c != 0)
                     .map(|c| *c as u8),
-            ) {
+            );
+
+            // Adjust the offset for next time
+            self.dirent_offset += entry.d_reclen as usize;
+
+            // Were we able to parse it?
+            if let Some(fd) = fd {
                 // Only return it if 1) it's in the correct range and 2) it's not
                 // the directory file descriptor we're using
 
@@ -199,8 +206,40 @@ impl DirFdIter {
     }
 
     pub fn size_hint(&self) -> (usize, Option<usize>) {
-        // Unfortunately, we can't be more specific than this
-        (0, None)
+        // We can't give an upper limit, but let's try to determine a lower limit
+
+        let mut low = 0;
+        let mut dirent_offset = self.dirent_offset;
+
+        while dirent_offset < self.dirent_nbytes {
+            // Get the next entry
+            let entry = unsafe { self.get_entry(dirent_offset) };
+
+            // Try to parse the file descriptor as an integer
+            let fd = parse_int_bytes(
+                entry
+                    .d_name
+                    .iter()
+                    .take_while(|c| **c != 0)
+                    .map(|c| *c as u8),
+            );
+
+            // Adjust the offset for next time
+            dirent_offset += entry.d_reclen as usize;
+
+            // Were we able to parse it?
+            if let Some(fd) = fd {
+                // Sanity check
+                debug_assert!(fd >= self.minfd);
+
+                if fd != self.dirfd {
+                    // We found one
+                    low += 1;
+                }
+            }
+        }
+
+        (low, None)
     }
 }
 
