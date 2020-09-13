@@ -192,7 +192,7 @@ impl Iterator for FdIter {
 
                     // We set self.curfd so that if something goes wrong we can switch to the maxfd
                     // loop without repeating file descriptors
-                    self.curfd = fd;
+                    self.curfd = fd + 1;
 
                     return Some(fd);
                 }
