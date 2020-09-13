@@ -249,7 +249,7 @@ impl Iterator for FdIter {
             (if self.possible { diff } else { 0 }, Some(diff))
         } else {
             // Unknown
-            (0, None)
+            (0, Some(libc::c_int::MAX as usize))
         }
     }
 }

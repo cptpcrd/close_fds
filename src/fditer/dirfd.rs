@@ -234,7 +234,7 @@ impl DirFdIter {
     }
 
     pub fn size_hint(&self) -> (usize, Option<usize>) {
-        // We can't give an upper limit, but let's try to determine a lower limit
+        // Let's try to determine a lower limit
 
         let mut low = 0;
         let mut dirent_offset = self.dirent_offset;
@@ -258,7 +258,7 @@ impl DirFdIter {
             }
         }
 
-        (low, None)
+        (low, Some(libc::c_int::MAX as usize))
     }
 }
 
