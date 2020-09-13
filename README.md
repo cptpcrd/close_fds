@@ -58,11 +58,13 @@ Note that `close_open_fds()` should be preferred whenever possible, as it may be
 #### Tier 2: "Guaranteed to build"  (built, but not tested, in CI)
 
 - NetBSD
+- Solaris
 
 #### Tier 3: "Should work"
 
 - OpenBSD
 - DragonflyBSD
+- Illumos
 
 *Note: As stated in the [license](LICENSE), `close_fds` comes with no warranty.*
 
@@ -80,9 +82,11 @@ Here is a list of the methods that `iter_open_fds()`, `iter_possible_fds()`, `cl
     - The `kern.proc.nfds` sysctl to get the number of open file descriptors (moderately efficient unless large numbers of file descriptors are open; not used by `close_open_fds()`)
 - NetBSD
     - `fcntl(0, F_MAXFD)` to get the maximum open file descriptor (moderately efficient)
+- Solaris and Illumos
+    - `/dev/fd` or `/proc/self/fd` if either is available (very efficient)
 
 On the BSDs, `close_open_fds()` may also call `closefrom()`, which is very efficient.
 
 If none of the methods listed above are available, it will fall back on a simple loop through every possible file descriptor number -- from `minfd` to `sysconf(_SC_OPEN_MAX)`.
 
-Note: The most common use case, `close_open_fds(3, &[])`, is very efficient on Linux (with `/proc` mounted), macOS, and all of the BSDs.
+Note: The most common use case, `close_open_fds(3, &[])`, is very efficient on Linux (with `/proc` mounted), macOS, all of the BSDs, and Solaris/Illumos.

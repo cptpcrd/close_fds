@@ -1,4 +1,10 @@
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "freebsd",
+    target_os = "solaris",
+    target_os = "illumos",
+))]
 mod dirfd;
 
 #[allow(unused_variables)]
@@ -13,13 +19,25 @@ pub fn iter_fds(mut minfd: libc::c_int, possible: bool, fast_maxfd: bool) -> FdI
         maxfd: -1,
         #[cfg(target_os = "freebsd")]
         fast_maxfd,
-        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "solaris",
+            target_os = "illumos",
+        ))]
         dirfd_iter: dirfd::DirFdIter::open(minfd),
     }
 }
 
 pub struct FdIter {
-    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "solaris",
+        target_os = "illumos",
+    ))]
     dirfd_iter: Option<dirfd::DirFdIter>,
     curfd: libc::c_int,
     possible: bool,
@@ -158,7 +176,13 @@ impl Iterator for FdIter {
     type Item = libc::c_int;
 
     fn next(&mut self) -> Option<Self::Item> {
-        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "solaris",
+            target_os = "illumos",
+        ))]
         if let Some(dfd_iter) = self.dirfd_iter.as_mut() {
             // Try iterating using the directory file descriptor we opened
 
@@ -202,7 +226,13 @@ impl Iterator for FdIter {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "solaris",
+            target_os = "illumos",
+        ))]
         if let Some(dfd_iter) = self.dirfd_iter.as_ref() {
             // Delegate to the directory file descriptor
             return dfd_iter.size_hint();

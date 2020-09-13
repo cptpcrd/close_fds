@@ -45,6 +45,14 @@ unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     libc::syscall(344, fd, buf.as_mut_ptr(), buf.len(), &mut offset) as isize
 }
 
+#[cfg(any(target_os = "solaris", target_os = "illumos"))]
+type RawDirent = libc::dirent;
+#[cfg(any(target_os = "solaris", target_os = "illumos"))]
+#[inline]
+unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
+    crate::externs::getdents(fd, buf.as_mut_ptr() as *mut libc::dirent, buf.len()) as isize
+}
+
 fn parse_int_bytes<I: Iterator<Item = u8>>(it: I) -> Option<libc::c_int> {
     let mut num: libc::c_int = 0;
     let mut seen_any = false;
@@ -135,6 +143,26 @@ impl DirFdIter {
                 "/dev/fd\0".as_ptr() as *const libc::c_char,
                 libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
             )
+        };
+
+        #[cfg(any(target_os = "solaris", target_os = "illumos"))]
+        let dirfd = unsafe {
+            // On Solaris/Illumos, both /dev/fd and /proc/self/fd should be correct
+            // So let's try /dev/fd, then /proc/self/fd if that fails
+
+            let fd = libc::open(
+                "/dev/fd\0".as_ptr() as *const libc::c_char,
+                libc::O_RDONLY | libc::O_CLOEXEC,
+            );
+
+            if fd < 0 {
+                libc::open(
+                    "/proc/self/fd\0".as_ptr() as *const libc::c_char,
+                    libc::O_RDONLY | libc::O_CLOEXEC,
+                )
+            } else {
+                fd
+            }
         };
 
         if dirfd >= 0 {

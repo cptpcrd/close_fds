@@ -20,6 +20,7 @@ jobs:
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
           - x86_64-unknown-netbsd
+          - x86_64-sun-solaris
         os: [ubuntu-latest]
 
         include:
