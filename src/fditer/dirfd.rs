@@ -77,6 +77,7 @@ fn parse_int_bytes<I: Iterator<Item = u8>>(it: I) -> Option<libc::c_int> {
 
 pub struct DirFdIter {
     minfd: libc::c_int,
+    // This is ONLY < 0 if the iterator was exhausted during iteration and has now been closed.
     dirfd: libc::c_int,
     dirents: [u8; core::mem::size_of::<RawDirent>()],
     dirent_nbytes: usize,
@@ -194,6 +195,11 @@ impl DirFdIter {
     }
 
     pub fn next(&mut self) -> Result<Option<libc::c_int>, ()> {
+        if self.dirfd < 0 {
+            // Exhausted
+            return Ok(None);
+        }
+
         loop {
             if self.dirent_offset >= self.dirent_nbytes {
                 let nbytes = unsafe { getdents(self.dirfd, &mut self.dirents) };
@@ -206,7 +212,15 @@ impl DirFdIter {
                     }
 
                     // 0 -> EOF
-                    core::cmp::Ordering::Equal => return Ok(None),
+                    core::cmp::Ordering::Equal => {
+                        // Close the directory file descriptor and return None
+                        unsafe {
+                            libc::close(self.dirfd);
+                        }
+                        self.dirfd = -1;
+                        return Ok(None);
+                    }
+
                     // < 0 -> Error
                     _ => return Err(()),
                 }
@@ -234,6 +248,11 @@ impl DirFdIter {
     }
 
     pub fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.dirfd < 0 {
+            // Exhausted
+            return (0, Some(0));
+        }
+
         // Let's try to determine a lower limit
 
         let mut low = 0;
@@ -264,9 +283,11 @@ impl DirFdIter {
 
 impl Drop for DirFdIter {
     fn drop(&mut self) {
-        // Close the directory file descriptor
-        unsafe {
-            libc::close(self.dirfd);
+        // Close the directory file descriptor if it's still open
+        if self.dirfd >= 0 {
+            unsafe {
+                libc::close(self.dirfd);
+            }
         }
     }
 }
