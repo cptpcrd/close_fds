@@ -16,7 +16,7 @@ pub fn iter_fds(mut minfd: libc::c_int, possible: bool, fast_maxfd: bool) -> FdI
     FdIter {
         curfd: minfd,
         possible,
-        maxfd: -1,
+        maxfd: None,
         #[cfg(target_os = "freebsd")]
         fast_maxfd,
         #[cfg(any(
@@ -41,7 +41,7 @@ pub struct FdIter {
     dirfd_iter: Option<dirfd::DirFdIter>,
     curfd: libc::c_int,
     possible: bool,
-    maxfd: libc::c_int,
+    maxfd: Option<libc::c_int>,
     /// If this is true, it essentially means "don't try to determine a more accurate maxfd using
     /// significantly slower code." On some systems. `close_open_fds()` passes this as true because
     /// the system has a working closefrom() and at some point it can just close the rest of the
@@ -164,11 +164,14 @@ impl FdIter {
     }
 
     fn get_maxfd(&mut self) -> libc::c_int {
-        if self.maxfd < 0 {
-            self.maxfd = self.get_maxfd_direct();
+        match self.maxfd {
+            Some(maxfd) => maxfd,
+            None => {
+                let maxfd = self.get_maxfd_direct();
+                self.maxfd = Some(maxfd);
+                maxfd
+            }
         }
-
-        self.maxfd
     }
 }
 
@@ -238,9 +241,9 @@ impl Iterator for FdIter {
             return dfd_iter.size_hint();
         }
 
-        if self.maxfd >= 0 {
+        if let Some(maxfd) = self.maxfd {
             // maxfd is set; we can give an upper bound by comparing to curfd
-            let diff = (self.maxfd as usize + 1).saturating_sub(self.curfd as usize);
+            let diff = (maxfd as usize + 1).saturating_sub(self.curfd as usize);
 
             // If we were given the "possible" flag, then this is also the lower limit.
             (if self.possible { diff } else { 0 }, Some(diff))
