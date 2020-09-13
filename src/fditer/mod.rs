@@ -254,6 +254,8 @@ impl Iterator for FdIter {
     }
 }
 
+impl core::iter::FusedIterator for FdIter {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -320,5 +322,24 @@ mod tests {
         if let Some(init_high) = init_high {
             assert!(i <= init_high);
         }
+    }
+
+    #[test]
+    fn test_fused_open() {
+        test_fused_generic(iter_fds(0, false, false));
+        test_fused_generic(iter_fds(0, false, true));
+    }
+
+    #[test]
+    fn test_fused_possible() {
+        test_fused_generic(iter_fds(0, true, false));
+        test_fused_generic(iter_fds(0, true, true));
+    }
+
+    fn test_fused_generic(mut fditer: FdIter) {
+        // Exhaust the iterator
+        fditer.by_ref().count();
+
+        assert_eq!(fditer.next(), None);
     }
 }
