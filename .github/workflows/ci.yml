@@ -128,14 +128,8 @@ jobs:
 
       matrix:
         toolchain: [nightly]
-        target:
-          - x86_64-unknown-linux-gnu
-        os: [ubuntu-latest]
-
-        include:
-          - toolchain: nightly
-            target: x86_64-apple-darwin
-            os: macos-latest
+        target: [x86_64-apple-darwin]
+        os: [macos-latest]
 
     runs-on: ${{ matrix.os }}
 
