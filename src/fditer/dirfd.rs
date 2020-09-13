@@ -190,7 +190,7 @@ impl DirFdIter {
                 let nbytes = unsafe { getdents(self.dirfd, &mut self.dirents) };
 
                 match nbytes.cmp(&0) {
-                    // >= 0 -> Found at least one entry
+                    // > 0 -> Found at least one entry
                     core::cmp::Ordering::Greater => {
                         self.dirent_nbytes = nbytes as usize;
                         self.dirent_offset = 0;
