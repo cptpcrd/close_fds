@@ -178,10 +178,19 @@ impl DirFdIter {
         }
     }
 
-    #[inline]
-    #[allow(clippy::cast_ptr_alignment)] // We trust the kernel not to make us segfault
-    unsafe fn get_entry(&self, offset: usize) -> &RawDirent {
-        &*(self.dirents.as_ptr().add(offset) as *const RawDirent)
+    unsafe fn get_entry_info(&self, offset: usize) -> (Option<libc::c_int>, usize) {
+        #[allow(clippy::cast_ptr_alignment)] // We trust the kernel not to make us segfault
+        let entry = &*(self.dirents.as_ptr().add(offset) as *const RawDirent);
+
+        let fd = parse_int_bytes(
+            entry
+                .d_name
+                .iter()
+                .take_while(|c| **c != 0)
+                .map(|c| *c as u8),
+        );
+
+        (fd, entry.d_reclen as usize)
     }
 
     pub fn next(&mut self) -> Result<Option<libc::c_int>, ()> {
@@ -207,19 +216,10 @@ impl DirFdIter {
             // This's probably the case, considering that the kernel probably stores them in that
             // order.
 
-            let entry = unsafe { self.get_entry(self.dirent_offset) };
-
-            // Try to parse the file descriptor as an integer
-            let fd = parse_int_bytes(
-                entry
-                    .d_name
-                    .iter()
-                    .take_while(|c| **c != 0)
-                    .map(|c| *c as u8),
-            );
+            let (fd, reclen) = unsafe { self.get_entry_info(self.dirent_offset) };
 
             // Adjust the offset for next time
-            self.dirent_offset += entry.d_reclen as usize;
+            self.dirent_offset += reclen as usize;
 
             // Were we able to parse it?
             if let Some(fd) = fd {
@@ -241,19 +241,10 @@ impl DirFdIter {
 
         while dirent_offset < self.dirent_nbytes {
             // Get the next entry
-            let entry = unsafe { self.get_entry(dirent_offset) };
-
-            // Try to parse the file descriptor as an integer
-            let fd = parse_int_bytes(
-                entry
-                    .d_name
-                    .iter()
-                    .take_while(|c| **c != 0)
-                    .map(|c| *c as u8),
-            );
+            let (fd, reclen) = unsafe { self.get_entry_info(dirent_offset) };
 
             // Adjust the offset for next time
-            dirent_offset += entry.d_reclen as usize;
+            dirent_offset += reclen as usize;
 
             // Were we able to parse it?
             if let Some(fd) = fd {
