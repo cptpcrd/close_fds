@@ -257,16 +257,45 @@ impl core::iter::FusedIterator for FdIter {}
 mod tests {
     use super::*;
 
+    fn open_files() -> [libc::c_int; 10] {
+        let mut fds = [-1; 10];
+        for cur_fd in fds.iter_mut() {
+            *cur_fd = unsafe { libc::open("/\0".as_ptr() as *const libc::c_char, libc::O_RDONLY) };
+            assert!(*cur_fd >= 0);
+        }
+        fds
+    }
+
+    unsafe fn close_files(fds: &[libc::c_int]) {
+        for &fd in fds {
+            libc::close(fd);
+        }
+    }
+
     #[test]
     fn test_size_hint_open() {
         test_size_hint_generic(iter_fds(0, false, false));
         test_size_hint_generic(iter_fds(0, false, true));
+
+        let fds = open_files();
+        test_size_hint_generic(iter_fds(0, false, false));
+        test_size_hint_generic(iter_fds(0, false, true));
+        unsafe {
+            close_files(&fds);
+        }
     }
 
     #[test]
     fn test_size_hint_possible() {
         test_size_hint_generic(iter_fds(0, true, false));
         test_size_hint_generic(iter_fds(0, true, true));
+
+        let fds = open_files();
+        test_size_hint_generic(iter_fds(0, true, false));
+        test_size_hint_generic(iter_fds(0, true, true));
+        unsafe {
+            close_files(&fds);
+        }
     }
 
     fn test_size_hint_generic(mut fditer: FdIter) {
@@ -325,12 +354,26 @@ mod tests {
     fn test_fused_open() {
         test_fused_generic(iter_fds(0, false, false));
         test_fused_generic(iter_fds(0, false, true));
+
+        let fds = open_files();
+        test_fused_generic(iter_fds(0, false, false));
+        test_fused_generic(iter_fds(0, false, true));
+        unsafe {
+            close_files(&fds);
+        }
     }
 
     #[test]
     fn test_fused_possible() {
         test_fused_generic(iter_fds(0, true, false));
         test_fused_generic(iter_fds(0, true, true));
+
+        let fds = open_files();
+        test_fused_generic(iter_fds(0, true, false));
+        test_fused_generic(iter_fds(0, true, true));
+        unsafe {
+            close_files(&fds);
+        }
     }
 
     fn test_fused_generic(mut fditer: FdIter) {
