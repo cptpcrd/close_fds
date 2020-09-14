@@ -201,7 +201,7 @@ impl Iterator for FdIter {
 
                 // Something went wrong. Close the directory file descriptor and fall back on a
                 // maxfd loop
-                Err(_) => drop(self.dirfd_iter.take()),
+                Err(_) => self.dirfd_iter = None,
             }
         }
 
