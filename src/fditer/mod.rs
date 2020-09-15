@@ -8,7 +8,7 @@
 mod dirfd;
 
 #[allow(unused_variables)]
-pub fn iter_fds(mut minfd: libc::c_int, possible: bool, fast_maxfd: bool) -> FdIter {
+pub fn iter_fds(mut minfd: libc::c_int, possible: bool, skip_nfds: bool) -> FdIter {
     if minfd < 0 {
         minfd = 0;
     }
@@ -18,7 +18,7 @@ pub fn iter_fds(mut minfd: libc::c_int, possible: bool, fast_maxfd: bool) -> FdI
         possible,
         maxfd: -1,
         #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
-        fast_maxfd,
+        skip_nfds,
         #[cfg(any(
             target_os = "linux",
             target_os = "macos",
@@ -42,12 +42,13 @@ pub struct FdIter {
     curfd: libc::c_int,
     possible: bool,
     maxfd: libc::c_int,
-    /// If this is true, it essentially means "don't try to determine a more accurate maxfd using
-    /// significantly slower code." On some systems. `close_open_fds()` passes this as true because
-    /// the system has a working closefrom() and at some point it can just close the rest of the
-    /// file descriptors in one go.
+    /// If this is true, it essentially means "don't try the 'nfds' methods of finding the maximum
+    /// open file descriptor."
+    /// `close_open_fds()` passes this as true on some systems becaus the system has a working
+    /// closefrom() and at some point it can just close the rest of the file descriptors in one go.
+    /// Additionally, the "nfds" method is not thread-safe.
     #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
-    fast_maxfd: bool,
+    skip_nfds: bool,
 }
 
 impl FdIter {
@@ -63,12 +64,9 @@ impl FdIter {
         }
 
         #[cfg(target_os = "freebsd")]
-        if !self.fast_maxfd {
+        if !self.skip_nfds {
             // On FreeBSD, we can get the *number* of open file descriptors. From that, we can use
             // an is_fd_valid() loop to get the maximum open file descriptor.
-
-            // However, we don't try this if fast_maxfd is true, because this method can be really
-            // slow.
 
             let mib = [
                 libc::CTL_KERN,
@@ -98,7 +96,7 @@ impl FdIter {
         }
 
         #[cfg(target_os = "openbsd")]
-        if !self.fast_maxfd {
+        if !self.skip_nfds {
             // On OpenBSD, we have a similar situation as with FreeBSD -- we can get the *number*
             // of open file descriptors, and perhaps work from that to get the maximum open file
             // descriptor.
