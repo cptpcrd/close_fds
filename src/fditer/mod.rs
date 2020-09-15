@@ -265,7 +265,25 @@ impl Iterator for FdIter {
 
     #[inline]
     fn count(mut self) -> usize {
-        if self.dirfd_iter.is_none() && self.possible {
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "solaris",
+            target_os = "illumos",
+        ))]
+        let know_exact = self.dirfd_iter.is_none() && self.possible;
+
+        #[cfg(not(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "solaris",
+            target_os = "illumos",
+        )))]
+        let know_exact = self.possible;
+
+        if know_exact {
             // We know the exact count
             (self.get_maxfd() as usize + 1).saturating_sub(self.curfd as usize)
         } else {
