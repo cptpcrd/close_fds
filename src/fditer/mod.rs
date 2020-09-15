@@ -262,6 +262,16 @@ impl Iterator for FdIter {
             (0, Some(libc::c_int::MAX as usize))
         }
     }
+
+    #[inline]
+    fn min(mut self) -> Option<Self::Item> {
+        self.next()
+    }
+
+    #[inline]
+    fn max(self) -> Option<Self::Item> {
+        self.last()
+    }
 }
 
 impl core::iter::FusedIterator for FdIter {}
