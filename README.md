@@ -80,6 +80,8 @@ Here is a list of the methods that `iter_open_fds()`, `iter_possible_fds()`, `cl
 - FreeBSD
     - `/dev/fd` if an [`fdescfs`](https://www.freebsd.org/cgi/man.cgi?query=fdescfs) appears to be mounted there (very efficient)
     - The `kern.proc.nfds` sysctl to get the number of open file descriptors (moderately efficient unless large numbers of file descriptors are open; not used by `close_open_fds()`)
+- OpenBSD
+    - `getdtablecount()` to get the number of open file descriptors (moderately efficient unless large numbers of file descriptors are open; not used by `close_open_fds()`)
 - NetBSD
     - `fcntl(0, F_MAXFD)` to get the maximum open file descriptor (moderately efficient)
 - Solaris and Illumos

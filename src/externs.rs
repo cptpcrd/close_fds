@@ -13,6 +13,11 @@ extern "C" {
     ) -> libc::ssize_t;
 }
 
+#[cfg(target_os = "openbsd")]
+extern "C" {
+    pub fn getdtablecount() -> libc::c_int;
+}
+
 #[cfg(any(target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly"))]
 extern "C" {
     pub fn closefrom(fd: libc::c_int) -> libc::c_int;

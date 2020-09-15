@@ -17,7 +17,7 @@ pub fn iter_fds(mut minfd: libc::c_int, possible: bool, fast_maxfd: bool) -> FdI
         curfd: minfd,
         possible,
         maxfd: -1,
-        #[cfg(target_os = "freebsd")]
+        #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
         fast_maxfd,
         #[cfg(any(
             target_os = "linux",
@@ -46,7 +46,7 @@ pub struct FdIter {
     /// significantly slower code." On some systems. `close_open_fds()` passes this as true because
     /// the system has a working closefrom() and at some point it can just close the rest of the
     /// file descriptors in one go.
-    #[cfg(target_os = "freebsd")]
+    #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
     fast_maxfd: bool,
 }
 
@@ -97,6 +97,21 @@ impl FdIter {
             }
         }
 
+        #[cfg(target_os = "openbsd")]
+        if !self.fast_maxfd {
+            // On OpenBSD, we have a similar situation as with FreeBSD -- we can get the *number*
+            // of open file descriptors, and perhaps work from that to get the maximum open file
+            // descriptor.
+
+            let nfds = unsafe { crate::externs::getdtablecount() };
+
+            if nfds >= 0 {
+                if let Some(maxfd) = Self::nfds_to_maxfd(nfds) {
+                    return maxfd;
+                }
+            }
+        }
+
         let fdlimit = unsafe { libc::sysconf(libc::_SC_OPEN_MAX) };
 
         // Clamp it at 65536 because that's a LOT of file descriptors
@@ -105,7 +120,7 @@ impl FdIter {
         fdlimit.max(1024).min(65536) as libc::c_int - 1
     }
 
-    #[cfg(target_os = "freebsd")]
+    #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
     fn nfds_to_maxfd(nfds: libc::c_int) -> Option<libc::c_int> {
         // Given the number of open file descriptors, return the largest open file descriptor (or
         // None if it can't be reasonably determined).
