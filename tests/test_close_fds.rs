@@ -77,6 +77,7 @@ fn iter_open_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
 
     assert_eq!(close_fds::iter_open_fds(-1).min(), Some(0));
     assert_eq!(close_fds::iter_open_fds(-1).max().as_ref(), fds.last());
+    assert_eq!(close_fds::iter_open_fds(-1).count(), fds.len());
 
     fds = close_fds::iter_open_fds_threadsafe(-1).collect();
     check_sorted(&fds);
@@ -91,6 +92,7 @@ fn iter_open_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
         close_fds::iter_open_fds_threadsafe(-1).max().as_ref(),
         fds.last()
     );
+    assert_eq!(close_fds::iter_open_fds_threadsafe(-1).count(), fds.len());
 
     fds = close_fds::iter_open_fds(0).collect();
     check_sorted(&fds);
@@ -136,6 +138,7 @@ fn iter_possible_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) 
 
     assert_eq!(close_fds::iter_possible_fds(-1).min(), Some(0));
     assert_eq!(close_fds::iter_possible_fds(-1).max().as_ref(), fds.last());
+    assert_eq!(close_fds::iter_possible_fds(-1).count(), fds.len());
 
     fds = close_fds::iter_possible_fds_threadsafe(-1).collect();
     check_sorted(&fds);
@@ -147,6 +150,10 @@ fn iter_possible_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) 
     assert_eq!(
         close_fds::iter_possible_fds_threadsafe(-1).max().as_ref(),
         fds.last()
+    );
+    assert_eq!(
+        close_fds::iter_possible_fds_threadsafe(-1).count(),
+        fds.len()
     );
 
     fds = close_fds::iter_possible_fds(0).collect();

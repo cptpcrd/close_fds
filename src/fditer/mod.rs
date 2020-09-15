@@ -264,6 +264,20 @@ impl Iterator for FdIter {
     }
 
     #[inline]
+    fn count(mut self) -> usize {
+        if self.dirfd_iter.is_none() && self.possible {
+            // We know the exact count
+            (self.get_maxfd() as usize + 1).saturating_sub(self.curfd as usize)
+        } else {
+            let mut count = 0;
+            while self.next().is_some() {
+                count += 1;
+            }
+            count
+        }
+    }
+
+    #[inline]
     fn min(mut self) -> Option<Self::Item> {
         self.next()
     }
