@@ -117,10 +117,11 @@ fn iter_possible_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) 
     // Don't check for fd3 not being present because it might legitimately be
     // returned by iter_possible_fds()
 
-    assert_eq!(
-        fds,
-        close_fds::iter_possible_fds_threadsafe(-1).collect::<Vec<libc::c_int>>()
-    );
+    fds = close_fds::iter_possible_fds_threadsafe(-1).collect();
+    check_sorted(&fds);
+    assert!(!fds.contains(&-1));
+    assert!(fds.contains(&fd1));
+    assert!(fds.contains(&fd2));
 
     fds = close_fds::iter_possible_fds(0).collect();
     check_sorted(&fds);
