@@ -39,6 +39,22 @@ pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
     fditer::iter_fds(minfd, false, false)
 }
 
+/// Equivalent to `iter_open_fds()`, but behaves more reliably in multithreaded programs (at the
+/// cost of increased performance on some platforms).
+///
+/// Specifically, if other threads open file descriptors at specific times then [`iter_open_fds()`]
+/// may skip over other file descriptors; this function avoids those issues.
+///
+/// Note, however, that this behavior comes at the cost of significantly increased performance on
+/// certain platforms. This is because the non-thread-safe code provides a potential performance
+/// improvement on those platforms.
+///
+/// [`iter_open_fds()`]: ./fn.iter_open_fds.html
+#[inline]
+pub fn iter_open_fds_threadsafe(minfd: libc::c_int) -> FdIter {
+    fditer::iter_fds(minfd, false, true)
+}
+
 /// Identical to `iter_open_fds()`, but may -- for efficiency -- yield invalid file descriptors.
 ///
 /// With this function, the caller is responsible for checking if the file descriptors are valid.
@@ -76,15 +92,42 @@ pub fn iter_possible_fds(minfd: libc::c_int) -> FdIter {
     fditer::iter_fds(minfd, true, false)
 }
 
+/// Equivalent to `iter_possible_fds()`, but behaves more reliably in multithreaded programs (at
+/// the cost of increased performance on some platforms).
+///
+/// See [`iter_open_fds_threadsafe()`] for more details on what this means.
+///
+/// [`iter_open_fds_threadsafe()`]: ./fn.iter_open_fds_threadsafe.html
+#[inline]
+pub fn iter_possible_fds_threadsafe(minfd: libc::c_int) -> FdIter {
+    fditer::iter_fds(minfd, true, true)
+}
+
 /// Identical to `close_open_fds()`, but sets the `FD_CLOEXEC` flag on the file descriptors instead
 /// of closing them.
 ///
 /// On some platforms (most notably, some of the BSDs), this is significantly less efficient than
 /// `close_open_fds()`, and use of that function should be preferred when possible.
-pub fn set_fds_cloexec(minfd: libc::c_int, mut keep_fds: &[libc::c_int]) {
+#[inline]
+pub fn set_fds_cloexec(minfd: libc::c_int, keep_fds: &[libc::c_int]) {
+    set_fds_cloexec_generic(minfd, keep_fds, false)
+}
+
+/// Equivalent to `set_fds_cloexec()`, but behaves more reliably in multithreaded programs (at the
+/// cost of increased performance on some platforms).
+///
+/// See [`iter_open_fds_threadsafe()`] for more details on what this means.
+///
+/// [`iter_open_fds_threadsafe()`]: ./fn.iter_open_fds_threadsafe.html
+#[inline]
+pub fn set_fds_cloexec_threadsafe(minfd: libc::c_int, keep_fds: &[libc::c_int]) {
+    set_fds_cloexec_generic(minfd, keep_fds, true)
+}
+
+fn set_fds_cloexec_generic(minfd: libc::c_int, mut keep_fds: &[libc::c_int], thread_safe: bool) {
     let (max_keep_fd, fds_sorted) = util::inspect_keep_fds(keep_fds);
 
-    for fd in iter_possible_fds(minfd) {
+    for fd in fditer::iter_fds(minfd, true, thread_safe) {
         if fd > max_keep_fd || !util::check_should_keep(&mut keep_fds, fd, fds_sorted) {
             // It's not in keep_fds
 

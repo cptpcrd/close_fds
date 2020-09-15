@@ -43,6 +43,8 @@ Some other helpful functions in this crate (more details in the [documentation](
 - `iter_open_fds(minfd)`: Iterates over all open file descriptors for the current process, starting at `minfd`.
 - `iter_possible_fds(minfd)` (not recommended): Identical to `iter_open_fds()`, but may yield invalid file descriptors; the caller is responsible for checking whether they are valid.
 
+In addition, there are "thread-safe" versions of these three functions that behave more reliably in multithreaded programs (at the cost of increased performance on some platforms). See the documentation for more details.
+
 Note that `close_open_fds()` should be preferred whenever possible, as it may be able to take advantage of platform-specific optimizations that these other functions cannot.
 
 ## OS support

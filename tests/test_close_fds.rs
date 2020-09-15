@@ -117,6 +117,11 @@ fn iter_possible_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) 
     // Don't check for fd3 not being present because it might legitimately be
     // returned by iter_possible_fds()
 
+    assert_eq!(
+        fds,
+        close_fds::iter_possible_fds_threadsafe(-1).collect::<Vec<libc::c_int>>()
+    );
+
     fds = close_fds::iter_possible_fds(0).collect();
     check_sorted(&fds);
     assert!(fds.contains(&fd1));
@@ -250,11 +255,21 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
         set_fd_cloexec(*fd, false);
         assert_eq!(is_fd_cloexec(*fd), Some(false));
     }
-
     // Make them all close-on-exec with set_fds_cloexec()
     close_fds::set_fds_cloexec(lowfd, &[]);
-
     // Now make sure they're all close-on-exec
+    for fd in openfds.iter() {
+        assert_eq!(is_fd_cloexec(*fd), Some(true));
+    }
+
+    // Set them all as non-close-on-exec again
+    for fd in openfds.iter() {
+        set_fd_cloexec(*fd, false);
+        assert_eq!(is_fd_cloexec(*fd), Some(false));
+    }
+    // Make them all close-on-exec with set_fds_cloexec_threadsafe()
+    close_fds::set_fds_cloexec_threadsafe(lowfd, &[]);
+    // Now make sure they're all close-on-exec again
     for fd in openfds.iter() {
         assert_eq!(is_fd_cloexec(*fd), Some(true));
     }
@@ -283,6 +298,10 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
     for fd in closedfds.iter() {
         assert!(!cur_open_fds.contains(fd));
     }
+    assert_eq!(
+        cur_open_fds,
+        close_fds::iter_open_fds_threadsafe(lowfd).collect::<Vec<libc::c_int>>()
+    );
 
     for &fd in openfds.iter() {
         unsafe {
