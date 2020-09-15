@@ -13,16 +13,25 @@ pub use fditer::FdIter;
 ///
 /// # Warnings
 ///
-/// 1. Some of the file descriptors yielded by this iterator may be in active use by other sections
-///    of code. Be very careful about which operations you perform on them.
-/// 2. File descriptors that are opened during iteration may or may not be included in the results
+/// **TL;DR**: Don't use this function in multithreaded programs unless you know what you're doing,
+/// and avoid opening/closing file descriptors while consuming this iterator.
+///
+/// 1. File descriptors that are opened during iteration may or may not be included in the results
 ///    (exact behavior is platform-specific and depends on several factors).
-/// 3. Closing file descriptors during iteration will not affect the iterator's ability to list
+///
+/// 2. **IMPORTANT**: On some platforms, if other threads open file descriptors at very specific
+///    times during a call to `FdIter::next()`, that may result in other file descriptors being
+///    skipped. Use with caution.
+///
+/// 3. *Closing* file descriptors during iteration will not affect the iterator's ability to list
 ///    other open file descriptors (if it does, that is a bug). However, in most cases you should
 ///    use [`close_open_fds()`] to do this.
-/// 4. If your program is multi-threaded, this is vulnerable to race conditions; a file descriptor
-///    returned by this iterator may not be valid by the time your code tries to do something with
-///    it.
+///
+/// 4. Some of the file descriptors yielded by this iterator may be in active use by other sections
+///    of code. Be very careful about which operations you perform on them.
+///
+///    If your program is multi-threaded, this is especially true, since a file descriptor returned
+///    by this iterator may have been closed by the time your code tries to do something with it.
 ///
 /// [`close_open_fds()`]: ./fn.close_open_fds.html
 #[inline]
