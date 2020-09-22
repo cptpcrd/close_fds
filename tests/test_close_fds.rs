@@ -386,3 +386,76 @@ fn run_tests() {
         vec![0, 1, 2]
     );
 }
+
+#[test]
+fn run_no_fds_tests() {
+    // This is an edge case of the fused tests. The case where *no* file descriptors are open
+    // requires special handling on some platforms, and this test exercises that code.
+    //
+    // We run this test in a separate process because we can't just close all file descriptors in
+    // the current process. That also means that we can run it in parallel with the other tests,
+    // since it only affects the subprocess.
+
+    match unsafe { libc::fork() } {
+        0 => {
+            // Close all open file descriptors
+            unsafe {
+                close_fds::close_open_fds(0, &[]);
+            }
+
+            // (Note: From here on, panic()ing is of limited value since it can't display a
+            // backtrace. So we exit() with different values on error, so that the error code will
+            // tell us what failed.)
+
+            // Create an FdIter
+            let mut fditer = close_fds::iter_open_fds(0);
+
+            // It's empty.
+            if fditer.next().is_some() {
+                std::process::exit(1);
+            }
+
+            // Now we open another file descriptor.
+            if unsafe { libc::open("/\0".as_ptr() as *const libc::c_char, libc::O_RDONLY) } < 0 {
+                std::process::exit(2);
+            }
+            // A new FdIter knows about the new file descriptor...
+            if close_fds::iter_open_fds(0).next() != Some(0) {
+                std::process::exit(3);
+            }
+
+            // But the old one doesn't, because it's fused.
+            if fditer.next().is_some() {
+                std::process::exit(4);
+            }
+
+            // And it knows it.
+            if fditer.size_hint() != (0, Some(0)) {
+                std::process::exit(5);
+            }
+            if fditer.count() != 0 {
+                std::process::exit(6);
+            }
+
+            std::process::exit(0);
+        }
+        ret if ret < 0 => panic!("Error fork()ing: {}", std::io::Error::last_os_error()),
+        pid => unsafe {
+            let mut stat = 0;
+
+            if libc::waitpid(pid, &mut stat, 0) < 0 {
+                panic!(
+                    "Error wait()ing for child: {}",
+                    std::io::Error::last_os_error()
+                )
+            }
+
+            assert!(libc::WIFEXITED(stat), "Process did not exit normally");
+            assert_eq!(
+                libc::WEXITSTATUS(stat),
+                0,
+                "Process exited with non-zero value"
+            );
+        },
+    }
+}
