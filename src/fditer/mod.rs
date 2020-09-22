@@ -87,7 +87,6 @@ impl FdIter {
                     0,
                 )
             } == 0
-                && nfds >= 0
             {
                 if let Some(maxfd) = Self::nfds_to_maxfd(nfds) {
                     return maxfd;
@@ -101,12 +100,8 @@ impl FdIter {
             // of open file descriptors, and perhaps work from that to get the maximum open file
             // descriptor.
 
-            let nfds = unsafe { crate::externs::getdtablecount() };
-
-            if nfds >= 0 {
-                if let Some(maxfd) = Self::nfds_to_maxfd(nfds) {
-                    return maxfd;
-                }
+            if let Some(maxfd) = Self::nfds_to_maxfd(unsafe { crate::externs::getdtablecount() }) {
+                return maxfd;
             }
         }
 
@@ -126,9 +121,10 @@ impl FdIter {
         if nfds == 0 {
             // No open file descriptors -- nothing to do!
             return Some(-1);
-        }
-
-        if nfds >= 100 {
+        } else if nfds < 0 {
+            // Probably failure of the underlying function
+            return None;
+        } else if nfds >= 100 {
             // We're probably better off just iterating through
             return None;
         }
