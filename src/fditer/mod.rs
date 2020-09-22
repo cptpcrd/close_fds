@@ -53,13 +53,23 @@ pub struct FdIter {
 
 impl FdIter {
     fn get_maxfd_direct(&self) -> libc::c_int {
+        // Note: This function must NEVER return a negative value. NEVER.
+
         #[cfg(target_os = "netbsd")]
-        {
+        unsafe {
             // NetBSD allows us to get the maximum open file descriptor
 
-            let maxfd = unsafe { libc::fcntl(0, libc::F_MAXFD) };
+            *libc::__errno() = 0;
+            let maxfd = libc::fcntl(0, libc::F_MAXFD);
+
             if maxfd >= 0 {
                 return maxfd;
+            } else if *libc::__errno() == 0 {
+                // fcntl(F_MAXFD) actually succeeded and returned -1, which means that no file
+                // descriptors are open.
+                // We can't return -1 because that's the special value used to signify that maxfd is
+                // unknown, but returning 0 will get us close.
+                return 0;
             }
         }
 
@@ -121,7 +131,9 @@ impl FdIter {
 
         if nfds == 0 {
             // No open file descriptors -- nothing to do!
-            return Some(-1);
+            // We can't return -1 because that's the special value used to signify that maxfd is
+            // unknown, but returning 0 will get us close.
+            return Some(0);
         } else if nfds < 0 {
             // Probably failure of the underlying function
             return None;
@@ -177,6 +189,15 @@ impl FdIter {
     fn get_maxfd(&mut self) -> libc::c_int {
         if self.maxfd < 0 {
             self.maxfd = self.get_maxfd_direct();
+
+            // Why is this here? Well, if get_maxfd_direct() ever returns a value < 0, future calls
+            // to get_maxfd() would cause self.maxfd to be recomputed.
+            //
+            // This would violate the guarantee that FdIter is fused, since that guarantee is based
+            // on the assumption that self.maxfd will NEVER CHANGE once it has been determined. It
+            // would also cause incorrect behavior from methods such as size_hint() and count(),
+            // which make similar assumptions about self.maxfd.
+            debug_assert!(self.maxfd >= 0);
         }
 
         self.maxfd
