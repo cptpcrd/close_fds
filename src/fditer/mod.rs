@@ -114,6 +114,7 @@ impl FdIter {
     }
 
     #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
+    #[inline]
     fn nfds_to_maxfd(nfds: libc::c_int) -> Option<libc::c_int> {
         // Given the number of open file descriptors, return the largest open file descriptor (or
         // None if it can't be reasonably determined).
@@ -172,6 +173,7 @@ impl FdIter {
         None
     }
 
+    #[inline]
     fn get_maxfd(&mut self) -> libc::c_int {
         if self.maxfd < 0 {
             self.maxfd = self.get_maxfd_direct();

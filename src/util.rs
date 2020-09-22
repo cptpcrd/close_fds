@@ -41,6 +41,7 @@ pub fn check_should_keep(keep_fds: &mut &[libc::c_int], fd: libc::c_int, fds_sor
 }
 
 #[cfg(target_os = "linux")]
+#[inline]
 pub fn is_wsl_1() -> bool {
     // It seems that on WSL 1 the kernel "release name" ends with "-Microsoft", and on WSL 2 the
     // release name ends with "-microsoft-standard". So we look for "Microsoft" at the end.

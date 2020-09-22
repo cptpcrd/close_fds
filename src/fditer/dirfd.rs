@@ -179,6 +179,7 @@ impl DirFdIter {
         }
     }
 
+    #[inline]
     unsafe fn get_entry_info(&self, offset: usize) -> (Option<libc::c_int>, usize) {
         #[allow(clippy::cast_ptr_alignment)] // We trust the kernel not to make us segfault
         let entry = &*(self.dirents.as_ptr().add(offset) as *const RawDirent);
