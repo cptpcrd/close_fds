@@ -188,8 +188,9 @@ fn close_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
     assert!(fds.contains(&fd2));
     assert!(!fds.contains(&fd3));
 
+    // Add 0 just to check the case where keep_fds[0] < minfd
     unsafe {
-        close_fds::close_open_fds(fd1, &[]);
+        close_fds::close_open_fds(fd1, &[0]);
     }
 
     fds = close_fds::iter_open_fds(fd1).collect();

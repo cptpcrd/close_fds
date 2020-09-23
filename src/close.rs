@@ -39,6 +39,32 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
 
     let (max_keep_fd, fds_sorted) = crate::util::inspect_keep_fds(keep_fds);
 
+    if fds_sorted {
+        // Example: specifying keep_fds=[3, 4, 6, 7]; minfd=3 has the same result as specifying
+        // keep_fds=[6, 7]; minfd=5.
+        // In some cases, this translation may reduce the number of syscalls and/or eliminate the
+        // need to call iter_fds() in the first place.
+
+        while let Some(first_fd) = keep_fds.first() {
+            match first_fd.cmp(&minfd) {
+                // keep_fds[0] > minfd
+                // No further simplification can be done
+                core::cmp::Ordering::Greater => break,
+
+                // keep_fds[0] == minfd
+                // We can remove keep_fds[0] and increment minfd
+                core::cmp::Ordering::Equal => {
+                    keep_fds = &keep_fds[1..];
+                    minfd += 1;
+                }
+
+                // keep_fds[0] < minfd
+                // We can remove keep_fds[0]
+                core::cmp::Ordering::Less => keep_fds = &keep_fds[1..],
+            }
+        }
+    }
+
     #[cfg(any(
         target_os = "freebsd",
         target_os = "netbsd",
