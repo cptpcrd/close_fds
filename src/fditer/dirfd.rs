@@ -283,6 +283,7 @@ impl DirFdIter {
 }
 
 impl Drop for DirFdIter {
+    #[inline]
     fn drop(&mut self) {
         // Close the directory file descriptor if it's still open
         if self.dirfd >= 0 {

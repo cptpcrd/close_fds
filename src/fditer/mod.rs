@@ -8,6 +8,7 @@
 mod dirfd;
 
 #[allow(unused_variables)]
+#[inline]
 pub fn iter_fds(mut minfd: libc::c_int, possible: bool, skip_nfds: bool) -> FdIter {
     if minfd < 0 {
         minfd = 0;
