@@ -11,4 +11,4 @@ categories = ["os::unix-apis"]
 repository = "https://github.com/cptpcrd/close_fds"
 
 [dependencies]
-libc = "0.2"
+libc = { version = "0.2", default-features = false }
