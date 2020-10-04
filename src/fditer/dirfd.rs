@@ -75,11 +75,16 @@ fn parse_int_bytes<I: Iterator<Item = u8>>(it: I) -> Option<libc::c_int> {
     }
 }
 
+#[repr(align(8))]
+struct DirFdIterBuf {
+    data: [u8; core::mem::size_of::<RawDirent>()],
+}
+
 pub struct DirFdIter {
     minfd: libc::c_int,
     // This is ONLY < 0 if the iterator was exhausted during iteration and has now been closed.
     dirfd: libc::c_int,
-    dirents: [u8; core::mem::size_of::<RawDirent>()],
+    dirent_buf: DirFdIterBuf,
     dirent_nbytes: usize,
     dirent_offset: usize,
 }
@@ -170,7 +175,9 @@ impl DirFdIter {
             Some(Self {
                 minfd,
                 dirfd,
-                dirents: [0; core::mem::size_of::<RawDirent>()],
+                dirent_buf: DirFdIterBuf {
+                    data: [0; core::mem::size_of::<RawDirent>()],
+                },
                 dirent_nbytes: 0,
                 dirent_offset: 0,
             })
@@ -182,7 +189,7 @@ impl DirFdIter {
     #[inline]
     unsafe fn get_entry_info(&self, offset: usize) -> (Option<libc::c_int>, usize) {
         #[allow(clippy::cast_ptr_alignment)] // We trust the kernel not to make us segfault
-        let entry = &*(self.dirents.as_ptr().add(offset) as *const RawDirent);
+        let entry = &*(self.dirent_buf.data.as_ptr().add(offset) as *const RawDirent);
 
         let fd = parse_int_bytes(
             entry
@@ -203,7 +210,7 @@ impl DirFdIter {
 
         loop {
             if self.dirent_offset >= self.dirent_nbytes {
-                let nbytes = unsafe { getdents(self.dirfd, &mut self.dirents) };
+                let nbytes = unsafe { getdents(self.dirfd, &mut self.dirent_buf.data) };
 
                 match nbytes.cmp(&0) {
                     // > 0 -> Found at least one entry
