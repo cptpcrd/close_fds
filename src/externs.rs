@@ -18,7 +18,7 @@ extern "C" {
 
 #[cfg(target_os = "freebsd")]
 #[repr(C)]
-struct dirent {
+pub struct dirent {
     pub d_fileno: libc::ino_t,
     pub d_off: libc::off_t,
     pub d_reclen: u16,
