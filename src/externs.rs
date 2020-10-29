@@ -1,6 +1,9 @@
 #[cfg(target_os = "freebsd")]
 pub const KERN_PROC_NFDS: libc::c_int = 43;
 
+#[cfg(target_os = "macos")]
+pub const SYS_GETDIRENTRIES64: libc::c_int = 344;
+
 #[cfg(target_os = "freebsd")]
 extern "C" {
     pub fn closefrom(lowfd: libc::c_int);

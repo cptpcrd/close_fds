@@ -41,8 +41,13 @@ type RawDirent = libc::dirent;
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     let mut offset: libc::off_t = 0;
 
-    // 344 is getdents64()
-    libc::syscall(344, fd, buf.as_mut_ptr(), buf.len(), &mut offset) as isize
+    libc::syscall(
+        crate::externs::SYS_GETDIRENTRIES64,
+        fd,
+        buf.as_mut_ptr(),
+        buf.len(),
+        &mut offset,
+    ) as isize
 }
 
 #[cfg(any(target_os = "solaris", target_os = "illumos"))]
