@@ -49,7 +49,7 @@ Note that `close_open_fds()` should be preferred whenever possible, as it may be
 
 ## OS support
 
-`close_fds` has three OS support tiers, similar to [Rust's support tiers](https://forge.rust-lang.org/release/platform-support.html):
+`close_fds` has two OS support tiers, similar to [Rust's support tiers](https://forge.rust-lang.org/release/platform-support.html):
 
 #### Tier 1: "Guaranteed to work" (tested in CI)
 
@@ -60,12 +60,9 @@ Note that `close_open_fds()` should be preferred whenever possible, as it may be
 #### Tier 2: "Guaranteed to build"  (built, but not tested, in CI)
 
 - NetBSD
-- Solaris
-
-#### Tier 3: "Should work"
-
 - OpenBSD
 - DragonflyBSD
+- Solaris
 - Illumos
 
 *Note: As stated in the [license](LICENSE), `close_fds` comes with no warranty.*

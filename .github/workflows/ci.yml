@@ -72,6 +72,40 @@ jobs:
               || startsWith(matrix.target, 'i686-unknown-linux-'))
           || matrix.os == 'macos-latest' && startsWith(matrix.target, 'x86_64-apple-darwin')
 
+  cross-build:
+    name: Build
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        target:
+          - x86_64-unknown-openbsd
+          - x86_64-unknown-dragonfly
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up repo
+        uses: actions/checkout@v2
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          default: true
+          target: x86_64-unknown-linux-gnu
+          components: rust-src
+
+      - name: Install xargo
+        uses: actions-rs/install@v0.1
+        with:
+          crate: xargo
+          version: latest
+          use-tool-cache: true
+
+      - name: Build
+        run: xargo build --verbose --target ${{ matrix.target }}
+
   coverage-tarpaulin:
     name: Tarpaulin
 
