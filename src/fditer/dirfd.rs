@@ -85,6 +85,7 @@ pub struct DirFdIter {
 }
 
 impl DirFdIter {
+    #[inline]
     pub fn open(minfd: libc::c_int) -> Option<Self> {
         #[cfg(target_os = "linux")]
         let dirfd = unsafe {
@@ -197,6 +198,7 @@ impl DirFdIter {
         (fd, entry.d_reclen as usize)
     }
 
+    #[inline]
     pub fn next(&mut self) -> Result<Option<libc::c_int>, ()> {
         if self.dirfd < 0 {
             // Exhausted
@@ -250,6 +252,7 @@ impl DirFdIter {
         }
     }
 
+    #[inline]
     pub fn size_hint(&self) -> (usize, Option<usize>) {
         if self.dirfd < 0 {
             // Exhausted
