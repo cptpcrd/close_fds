@@ -203,6 +203,14 @@ impl FdIter {
 
         self.maxfd
     }
+
+    /// Returns whether this iterator was created with one of the "possible" iteration functions,
+    /// in which case it may yield invalid file descriptors and the caller is responsible for
+    /// checking their validity.
+    #[inline]
+    pub fn is_possible_iter(&self) -> bool {
+        self.possible
+    }
 }
 
 impl Iterator for FdIter {
