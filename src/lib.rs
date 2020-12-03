@@ -16,16 +16,17 @@ pub use fditer::FdIter;
 /// **TL;DR**: Don't use this function in multithreaded programs unless you know what you're doing,
 /// and avoid opening/closing file descriptors while consuming this iterator.
 ///
-/// 1. File descriptors that are opened during iteration may or may not be included in the results
+/// 1. File descriptors that are opened *during* iteration may or may not be included in the results
 ///    (exact behavior is platform-specific and depends on several factors).
 ///
 /// 2. **IMPORTANT**: On some platforms, if other threads open file descriptors at very specific
 ///    times during a call to `FdIter::next()`, that may result in other file descriptors being
-///    skipped. Use with caution.
+///    skipped. Use with caution. (If this is a problem for you, use
+///    [`iter_open_fds_threadsafe()`], which avoids this issue).
 ///
-/// 3. *Closing* file descriptors during iteration will not affect the iterator's ability to list
-///    other open file descriptors (if it does, that is a bug). However, in most cases you should
-///    use [`close_open_fds()`] to do this.
+/// 3. *Closing* file descriptors during iteration (in the same thread or in another thread) will
+///    not affect the iterator's ability to list other open file descriptors (if it does, that is a
+///    bug). However, in most cases you should use [`close_open_fds()`] to do this.
 ///
 /// 4. Some of the file descriptors yielded by this iterator may be in active use by other sections
 ///    of code. Be very careful about which operations you perform on them.
@@ -34,19 +35,21 @@ pub use fditer::FdIter;
 ///    by this iterator may have been closed by the time your code tries to do something with it.
 ///
 /// [`close_open_fds()`]: ./fn.close_open_fds.html
+/// [`iter_open_fds_threadsafe()`]: ./fn.iter_open_fds_threadsafe.html
 #[inline]
 pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
     fditer::iter_fds(minfd, false, false)
 }
 
 /// Equivalent to `iter_open_fds()`, but behaves more reliably in multithreaded programs (at the
-/// cost of increased performance on some platforms).
+/// cost of decreased performance on some platforms).
 ///
-/// Specifically, if other threads open file descriptors at specific times then [`iter_open_fds()`]
-/// may skip over other file descriptors; this function avoids those issues.
+/// Specifically, if other threads open file descriptors at specific times, [`iter_open_fds()`]
+/// may skip over other file descriptors. This function avoids those issues.
 ///
 /// Note, however, that this behavior comes at the cost of significantly increased performance on
-/// certain platforms. This is because the non-thread-safe code provides a potential performance
+/// certain platforms (currently, this is limited to 1) OpenBSD and 2) FreeBSD without an `fdescfs`
+/// mounted on `/dev/fd`). This is because the non-thread-safe code provides a potential performance
 /// improvement on those platforms.
 ///
 /// [`iter_open_fds()`]: ./fn.iter_open_fds.html

@@ -31,6 +31,17 @@ pub fn iter_fds(mut minfd: libc::c_int, possible: bool, skip_nfds: bool) -> FdIt
     }
 }
 
+/// An iterator over the current process's file descriptors.
+///
+/// This can be created with one of the "iter" functions, such as:
+///
+/// - [`iter_open_fds()`](./fn.iter_open_fds.html)
+/// - [`iter_possible_fds()`](./fn.iter_possible_fds.html)
+/// - [`iter_open_fds_threadsafe()`](./fn.iter_open_fds_threadsafe.html)
+/// - [`iter_possible_fds_threadsafe()`](./fn.iter_possible_fds_threadsafe.html)
+///
+/// If this iterator is created with one of the "possible" functions, then it may yield invalid
+/// file descriptors. This can be checked with [`is_possible_iter()`](#method.is_possible_iter).
 pub struct FdIter {
     #[cfg(any(
         target_os = "linux",
