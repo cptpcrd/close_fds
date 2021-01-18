@@ -115,13 +115,13 @@ impl DirFdIter {
             let dev_path_ptr = "/dev\0".as_ptr() as *const libc::c_char;
             let devfd_path_ptr = "/dev/fd\0".as_ptr() as *const libc::c_char;
 
-            let mut dev_stat = unsafe { core::mem::zeroed() };
-            let mut devfd_stat = unsafe { core::mem::zeroed() };
+            let mut dev_stat = core::mem::MaybeUninit::uninit();
+            let mut devfd_stat = core::mem::MaybeUninit::uninit();
 
             unsafe {
-                if libc::stat(dev_path_ptr, &mut dev_stat) == 0
-                    && libc::stat(devfd_path_ptr, &mut devfd_stat) == 0
-                    && dev_stat.st_dev != devfd_stat.st_dev
+                if libc::stat(dev_path_ptr, dev_stat.as_mut_ptr()) == 0
+                    && libc::stat(devfd_path_ptr, devfd_stat.as_mut_ptr()) == 0
+                    && dev_stat.assume_init().st_dev != devfd_stat.assume_init().st_dev
                 {
                     // /dev and /dev/fd are on different devices; /dev/fd is probably an fdescfs
 
