@@ -100,29 +100,23 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
             // If fd > max_keep_fd, we know that none of the file descriptors we encounter from
             // here onward can be in keep_fds.
 
-            // On the BSDs we can use closefrom() to close the rest
-            #[cfg(any(
-                target_os = "freebsd",
-                target_os = "netbsd",
-                target_os = "openbsd",
-                target_os = "dragonfly"
-            ))]
-            {
-                // Close the directory file descriptor (if one is being used) first
-                drop(fditer);
-                crate::externs::closefrom(fd);
-                return;
-            }
+            cfg_if::cfg_if! {
+                if #[cfg(any(
+                    target_os = "freebsd",
+                    target_os = "netbsd",
+                    target_os = "openbsd",
+                    target_os = "dragonfly",
+                ))] {
+                    // On the BSDs we can use closefrom() to close the rest
 
-            // On other systems, this just allows us to skip the contains() check
-            #[cfg(not(any(
-                target_os = "freebsd",
-                target_os = "netbsd",
-                target_os = "openbsd",
-                target_os = "dragonfly"
-            )))]
-            {
-                libc::close(fd);
+                    // Close the directory file descriptor (if one is being used) first
+                    drop(fditer);
+                    crate::externs::closefrom(fd);
+                    return;
+                } else {
+                    // On other systems, this just allows us to skip the contains() check
+                    libc::close(fd);
+                }
             }
         } else if !crate::util::check_should_keep(&mut keep_fds, fd, fds_sorted) {
             // Close it if it's not in keep_fds

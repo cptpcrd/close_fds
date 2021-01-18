@@ -12,3 +12,4 @@ repository = "https://github.com/cptpcrd/close_fds"
 
 [dependencies]
 libc = "0.2"
+cfg-if = "0.1"
