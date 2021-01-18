@@ -96,6 +96,7 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
     // We have to use a while loop so we can drop() the iterator in the closefrom() case
     #[allow(clippy::while_let_on_iterator)]
     while let Some(fd) = fditer.next() {
+        #[allow(clippy::if_same_then_else)]
         if fd > max_keep_fd {
             // If fd > max_keep_fd, we know that none of the file descriptors we encounter from
             // here onward can be in keep_fds.

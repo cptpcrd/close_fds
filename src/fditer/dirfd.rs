@@ -61,7 +61,7 @@ fn parse_int_bytes<I: Iterator<Item = u8>>(it: I) -> Option<libc::c_int> {
     let mut seen_any = false;
 
     for ch in it {
-        if ch >= b'0' && ch <= b'9' {
+        if (b'0'..=b'9').contains(&ch) {
             num = num
                 .checked_mul(10)?
                 .checked_add((ch - b'0') as libc::c_int)?;
