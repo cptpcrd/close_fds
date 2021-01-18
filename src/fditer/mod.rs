@@ -2,6 +2,7 @@
     target_os = "linux",
     target_os = "macos",
     target_os = "freebsd",
+    target_os = "netbsd",
     target_os = "solaris",
     target_os = "illumos",
 ))]
@@ -24,6 +25,7 @@ pub fn iter_fds(mut minfd: libc::c_int, possible: bool, skip_nfds: bool) -> FdIt
             target_os = "linux",
             target_os = "macos",
             target_os = "freebsd",
+            target_os = "netbsd",
             target_os = "solaris",
             target_os = "illumos",
         ))]
@@ -47,6 +49,7 @@ pub struct FdIter {
         target_os = "linux",
         target_os = "macos",
         target_os = "freebsd",
+        target_os = "netbsd",
         target_os = "solaris",
         target_os = "illumos",
     ))]
@@ -232,6 +235,7 @@ impl Iterator for FdIter {
             target_os = "linux",
             target_os = "macos",
             target_os = "freebsd",
+            target_os = "netbsd",
             target_os = "solaris",
             target_os = "illumos",
         ))]
@@ -282,6 +286,7 @@ impl Iterator for FdIter {
             target_os = "linux",
             target_os = "macos",
             target_os = "freebsd",
+            target_os = "netbsd",
             target_os = "solaris",
             target_os = "illumos",
         ))]

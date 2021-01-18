@@ -82,6 +82,7 @@ Here is a list of the methods that `iter_open_fds()`, `iter_possible_fds()`, `cl
 - OpenBSD
     - `getdtablecount()` to get the number of open file descriptors (moderately efficient unless large numbers of file descriptors are open; not used by `close_open_fds()` or by the "thread-safe" functions)
 - NetBSD
+    - `/proc/self/fd` if `/proc` is mounted (very efficient)
     - `fcntl(0, F_MAXFD)` to get the maximum open file descriptor (moderately efficient)
 - Solaris and Illumos
     - `/dev/fd` or `/proc/self/fd` if either is available (very efficient)

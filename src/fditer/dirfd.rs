@@ -24,6 +24,14 @@ unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     ) as isize
 }
 
+#[cfg(target_os = "netbsd")]
+type RawDirent = libc::dirent;
+#[cfg(target_os = "netbsd")]
+#[inline]
+unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
+    crate::externs::getdents(fd, buf.as_mut_ptr() as *mut libc::c_char, buf.len()) as isize
+}
+
 #[cfg(target_os = "macos")]
 type RawDirent = libc::dirent;
 #[cfg(target_os = "macos")]
@@ -135,6 +143,16 @@ impl DirFdIter {
                     -1
                 }
             }
+        };
+
+        #[cfg(target_os = "netbsd")]
+        let dirfd = unsafe {
+            // On NetBSD, /dev/fd is a static directory, but /proc/self/fd is correct
+
+            libc::open(
+                "/proc/self/fd\0".as_ptr() as *const libc::c_char,
+                libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
+            )
         };
 
         #[cfg(target_os = "macos")]

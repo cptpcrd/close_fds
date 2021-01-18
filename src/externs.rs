@@ -39,6 +39,15 @@ extern "C" {
     pub fn closefrom(fd: libc::c_int) -> libc::c_int;
 }
 
+#[cfg(target_os = "netbsd")]
+extern "C" {
+    pub fn getdents(
+        fildes: libc::c_int,
+        buf: *mut libc::c_char,
+        nbyte: libc::size_t,
+    ) -> libc::c_int;
+}
+
 #[cfg(any(target_os = "solaris", target_os = "illumos"))]
 extern "C" {
     pub fn getdents(
