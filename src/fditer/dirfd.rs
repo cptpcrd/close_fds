@@ -212,17 +212,17 @@ impl DirFdIter {
                 target_os = "macos",
             ))] {
                 // Trailing NUL
-                debug_assert_eq!(entry.d_name[entry.d_namlen as usize - 1], 0);
+                debug_assert_eq!(entry.d_name[entry.d_namlen as usize], 0);
                 // No NULs before that
                 debug_assert_eq!(
-                    entry.d_name[..entry.d_namlen as usize - 1]
+                    entry.d_name[..entry.d_namlen as usize]
                         .iter()
                         .position(|&c| c == 0),
                     None
                 );
 
                 let fd = parse_int_bytes(
-                    entry.d_name[..entry.d_namlen as usize - 1]
+                    entry.d_name[..entry.d_namlen as usize]
                         .iter()
                         .map(|c| *c as u8),
                 );
