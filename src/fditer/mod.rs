@@ -96,7 +96,7 @@ impl FdIter {
             let mib = [
                 libc::CTL_KERN,
                 libc::KERN_PROC,
-                crate::externs::KERN_PROC_NFDS,
+                crate::sys::KERN_PROC_NFDS,
                 0,
             ];
             let mut nfds: libc::c_int = 0;
@@ -125,7 +125,7 @@ impl FdIter {
             // of open file descriptors, and perhaps work from that to get the maximum open file
             // descriptor.
 
-            if let Some(maxfd) = Self::nfds_to_maxfd(unsafe { crate::externs::getdtablecount() }) {
+            if let Some(maxfd) = Self::nfds_to_maxfd(unsafe { crate::sys::getdtablecount() }) {
                 return maxfd;
             }
         }

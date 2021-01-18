@@ -12,11 +12,11 @@ unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
 }
 
 #[cfg(target_os = "freebsd")]
-type RawDirent = crate::externs::dirent;
+type RawDirent = crate::sys::dirent;
 #[cfg(target_os = "freebsd")]
 #[inline]
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
-    crate::externs::getdirentries(
+    crate::sys::getdirentries(
         fd,
         buf.as_mut_ptr() as *mut libc::c_char,
         buf.len(),
@@ -29,7 +29,7 @@ type RawDirent = libc::dirent;
 #[cfg(target_os = "netbsd")]
 #[inline]
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
-    crate::externs::getdents(fd, buf.as_mut_ptr() as *mut libc::c_char, buf.len()) as isize
+    crate::sys::getdents(fd, buf.as_mut_ptr() as *mut libc::c_char, buf.len()) as isize
 }
 
 #[cfg(target_os = "macos")]
@@ -40,7 +40,7 @@ unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     let mut offset: libc::off_t = 0;
 
     libc::syscall(
-        crate::externs::SYS_GETDIRENTRIES64,
+        crate::sys::SYS_GETDIRENTRIES64,
         fd,
         buf.as_mut_ptr(),
         buf.len(),
@@ -53,7 +53,7 @@ type RawDirent = libc::dirent;
 #[cfg(any(target_os = "solaris", target_os = "illumos"))]
 #[inline]
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
-    crate::externs::getdents(fd, buf.as_mut_ptr() as *mut libc::dirent, buf.len()) as isize
+    crate::sys::getdents(fd, buf.as_mut_ptr() as *mut libc::dirent, buf.len()) as isize
 }
 
 fn parse_int_bytes<I: Iterator<Item = u8>>(it: I) -> Option<libc::c_int> {

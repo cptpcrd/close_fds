@@ -74,7 +74,7 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
     if max_keep_fd < minfd {
         // On the BSDs, if all the file descriptors in keep_fds are less than minfd (or if keep_fds
         // is empty), we can just call closefrom()
-        crate::externs::closefrom(minfd);
+        crate::sys::closefrom(minfd);
         return;
     }
 
@@ -112,7 +112,7 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
 
                     // Close the directory file descriptor (if one is being used) first
                     drop(fditer);
-                    crate::externs::closefrom(fd);
+                    crate::sys::closefrom(fd);
                     return;
                 } else {
                     // On other systems, this just allows us to skip the contains() check

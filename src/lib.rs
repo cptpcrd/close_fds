@@ -1,8 +1,8 @@
 #![no_std]
 
 mod close;
-mod externs;
 mod fditer;
+mod sys;
 mod util;
 
 pub use close::close_open_fds;
