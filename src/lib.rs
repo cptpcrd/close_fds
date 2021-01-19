@@ -47,7 +47,7 @@ pub fn iter_open_fds(minfd: libc::c_int) -> FdIter {
 /// Specifically, if other threads open file descriptors at specific times, [`iter_open_fds()`]
 /// may skip over other file descriptors. This function avoids those issues.
 ///
-/// Note, however, that this behavior comes at the cost of significantly increased performance on
+/// Note, however, that this behavior comes at the cost of significantly decreased performance on
 /// certain platforms (currently, this is limited to 1) OpenBSD and 2) FreeBSD without an `fdescfs`
 /// mounted on `/dev/fd`). This is because the non-thread-safe code provides a potential performance
 /// improvement on those platforms.
@@ -96,7 +96,7 @@ pub fn iter_possible_fds(minfd: libc::c_int) -> FdIter {
 }
 
 /// Equivalent to `iter_possible_fds()`, but behaves more reliably in multithreaded programs (at
-/// the cost of increased performance on some platforms).
+/// the cost of decreased performance on some platforms).
 ///
 /// See [`iter_open_fds_threadsafe()`] for more details on what this means.
 ///
@@ -117,7 +117,7 @@ pub fn set_fds_cloexec(minfd: libc::c_int, keep_fds: &[libc::c_int]) {
 }
 
 /// Equivalent to `set_fds_cloexec()`, but behaves more reliably in multithreaded programs (at the
-/// cost of increased performance on some platforms).
+/// cost of decreased performance on some platforms).
 ///
 /// See [`iter_open_fds_threadsafe()`] for more details on what this means.
 ///
