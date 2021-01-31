@@ -24,14 +24,6 @@ unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     ) as isize
 }
 
-#[cfg(target_os = "netbsd")]
-type RawDirent = libc::dirent;
-#[cfg(target_os = "netbsd")]
-#[inline]
-unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
-    crate::sys::getdents(fd, buf.as_mut_ptr() as *mut libc::c_char, buf.len()) as isize
-}
-
 #[cfg(target_os = "macos")]
 type RawDirent = libc::dirent;
 #[cfg(target_os = "macos")]
@@ -48,12 +40,12 @@ unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     ) as isize
 }
 
-#[cfg(any(target_os = "solaris", target_os = "illumos"))]
+#[cfg(any(target_os = "netbsd", target_os = "solaris", target_os = "illumos"))]
 type RawDirent = libc::dirent;
-#[cfg(any(target_os = "solaris", target_os = "illumos"))]
+#[cfg(any(target_os = "netbsd", target_os = "solaris", target_os = "illumos"))]
 #[inline]
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
-    crate::sys::getdents(fd, buf.as_mut_ptr() as *mut libc::dirent, buf.len()) as isize
+    crate::sys::getdents(fd, buf.as_mut_ptr() as *mut _, buf.len()) as isize
 }
 
 fn parse_int_bytes<I: Iterator<Item = u8>>(it: I) -> Option<libc::c_int> {
