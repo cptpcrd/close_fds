@@ -34,8 +34,8 @@ pub fn simplify_keep_fds<'a>(
         // In some cases, this translation may reduce the number of syscalls and/or eliminate the
         // need to call iter_fds() in the first place.
 
-        while let Some(first_fd) = keep_fds.first() {
-            match first_fd.cmp(&minfd) {
+        while let Some((first, rest)) = keep_fds.split_first() {
+            match first.cmp(&minfd) {
                 // keep_fds[0] > minfd
                 // No further simplification can be done
                 Ordering::Greater => break,
@@ -43,13 +43,13 @@ pub fn simplify_keep_fds<'a>(
                 // keep_fds[0] == minfd
                 // We can remove keep_fds[0] and increment minfd
                 Ordering::Equal => {
-                    keep_fds = &keep_fds[1..];
+                    keep_fds = rest;
                     *minfd += 1;
                 }
 
                 // keep_fds[0] < minfd
                 // We can remove keep_fds[0]
-                Ordering::Less => keep_fds = &keep_fds[1..],
+                Ordering::Less => keep_fds = rest,
             }
         }
     }
