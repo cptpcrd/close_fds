@@ -21,6 +21,42 @@ pub fn inspect_keep_fds(keep_fds: &[libc::c_int]) -> (libc::c_int, bool) {
     (max_keep_fd, fds_sorted)
 }
 
+pub fn simplify_keep_fds<'a>(
+    mut keep_fds: &'a [libc::c_int],
+    fds_sorted: bool,
+    minfd: &mut libc::c_int,
+) -> &'a [libc::c_int] {
+    use core::cmp::Ordering;
+
+    if fds_sorted {
+        // Example: specifying keep_fds=[3, 4, 6, 7]; minfd=3 has the same result as specifying
+        // keep_fds=[6, 7]; minfd=5.
+        // In some cases, this translation may reduce the number of syscalls and/or eliminate the
+        // need to call iter_fds() in the first place.
+
+        while let Some(first_fd) = keep_fds.first() {
+            match first_fd.cmp(&minfd) {
+                // keep_fds[0] > minfd
+                // No further simplification can be done
+                Ordering::Greater => break,
+
+                // keep_fds[0] == minfd
+                // We can remove keep_fds[0] and increment minfd
+                Ordering::Equal => {
+                    keep_fds = &keep_fds[1..];
+                    *minfd += 1;
+                }
+
+                // keep_fds[0] < minfd
+                // We can remove keep_fds[0]
+                Ordering::Less => keep_fds = &keep_fds[1..],
+            }
+        }
+    }
+
+    keep_fds
+}
+
 pub fn check_should_keep(keep_fds: &mut &[libc::c_int], fd: libc::c_int, fds_sorted: bool) -> bool {
     if fds_sorted {
         // If the file descriptor list is sorted, we can do a more efficient lookup
@@ -134,5 +170,59 @@ mod tests {
 
         assert!(!check_should_keep(&mut keep_fds, 6, false));
         assert_eq!(keep_fds, &[0, 1, 5, 8, 10]);
+    }
+
+    #[test]
+    fn test_simplify_keep_fds() {
+        let mut keep_fds: &[libc::c_int];
+        let mut minfd;
+
+        // Here, the entire list can be emptied without changing minfd
+        keep_fds = &[0, 1, 2];
+        minfd = 3;
+        assert_eq!(simplify_keep_fds(keep_fds, true, &mut minfd), &[]);
+        assert_eq!(minfd, 3);
+
+        // Here, it can be emptied if minfd is increased
+        keep_fds = &[2, 3, 4, 5, 6, 7];
+        minfd = 3;
+        assert_eq!(simplify_keep_fds(keep_fds, true, &mut minfd), &[]);
+        assert_eq!(minfd, 8);
+
+        // Here, the first 3 elements can be removed if minfd is increased
+        keep_fds = &[3, 4, 5, 8, 10];
+        minfd = 3;
+        assert_eq!(simplify_keep_fds(keep_fds, true, &mut minfd), &[8, 10]);
+        assert_eq!(minfd, 6);
+
+        // Here it's just the first element
+        keep_fds = &[3, 5, 8, 10];
+        minfd = 3;
+        assert_eq!(simplify_keep_fds(keep_fds, true, &mut minfd), &[5, 8, 10]);
+        assert_eq!(minfd, 4);
+
+        // Can't simplify any further
+        keep_fds = &[4, 5, 8, 10];
+        minfd = 3;
+        assert_eq!(
+            simplify_keep_fds(keep_fds, true, &mut minfd),
+            &[4, 5, 8, 10]
+        );
+        assert_eq!(minfd, 3);
+
+        // And if fds_sorted=false, no simplification can be performed
+
+        keep_fds = &[2, 1, 0];
+        minfd = 3;
+        assert_eq!(simplify_keep_fds(keep_fds, false, &mut minfd), &[2, 1, 0]);
+        assert_eq!(minfd, 3);
+
+        keep_fds = &[4, 5, 8, 10, 3];
+        minfd = 3;
+        assert_eq!(
+            simplify_keep_fds(keep_fds, false, &mut minfd),
+            &[4, 5, 8, 10, 3]
+        );
+        assert_eq!(minfd, 3);
     }
 }
