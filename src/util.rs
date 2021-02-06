@@ -108,7 +108,7 @@ pub fn is_fd_valid(fd: libc::c_int) -> bool {
     unsafe { libc::fcntl(fd, libc::F_GETFD) >= 0 }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "freebsd"))]
 pub fn apply_range<F: FnMut(libc::c_int, libc::c_int) -> Result<(), ()>>(
     minfd: libc::c_int,
     mut keep_fds: &[libc::c_int],
@@ -260,7 +260,7 @@ mod tests {
         assert_eq!(minfd, 3);
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     #[test]
     fn test_apply_range() {
         macro_rules! check_ok {
