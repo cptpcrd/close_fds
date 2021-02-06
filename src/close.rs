@@ -141,6 +141,66 @@ unsafe fn try_close_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<()
     }
 }
 
+#[cfg(target_os = "freebsd")]
+static mut HAS_CLOSE_RANGE: Option<bool> = None;
+
+#[cfg(target_os = "freebsd")]
+unsafe fn try_close_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<(), ()> {
+    // On FreeBSD, trying to make a syscall that the kernel doesn't recognize will result in the
+    // process being killed with SIGSYS. So before we try making a syscall(), we have to check if
+    // the kernel is new enough. (We also have to cache the presence/absence differently because of
+    // this).
+
+    debug_assert!(minfd <= maxfd, "{} > {}", minfd, maxfd);
+
+    match HAS_CLOSE_RANGE {
+        // We know it's present; just call syscall()
+        Some(true) => (),
+        // We know it *isn't* present
+        Some(false) => return Err(()),
+
+        // Check if it's present
+        // Here, we check the `kern.osreldate` sysctl
+        None => {
+            const OSRELDATE_MIB: [libc::c_int; 2] = [libc::CTL_KERN, libc::KERN_OSRELDATE];
+
+            let mut osreldate = 0;
+            let mut oldlen = core::mem::size_of::<libc::c_int>();
+
+            if libc::sysctl(
+                OSRELDATE_MIB.as_ptr(),
+                OSRELDATE_MIB.len() as _,
+                &mut osreldate as *mut _ as *mut _,
+                &mut oldlen,
+                core::ptr::null(),
+                0,
+            ) != 0
+                || osreldate < 1202000
+            {
+                // Either:
+                // - sysctl() failed somehow (???); assume close_range() is not present
+                // - The kernel is too old and it doesn't support close_range()
+                HAS_CLOSE_RANGE = Some(false);
+                return Err(());
+            }
+
+            HAS_CLOSE_RANGE = Some(true);
+        }
+    }
+
+    if libc::syscall(
+        crate::sys::SYS_CLOSE_RANGE,
+        minfd as libc::c_uint,
+        maxfd as libc::c_uint,
+        0,
+    ) == 0
+    {
+        Ok(())
+    } else {
+        Err(())
+    }
+}
+
 #[cfg(any(
     target_os = "linux",
     target_os = "freebsd",
@@ -177,7 +237,10 @@ unsafe fn close_fds_shortcut(
     } else if max_keep_fd < minfd {
         // Same case as closefrom() on the BSDs
         return try_close_range(minfd as libc::c_uint, libc::c_uint::MAX);
-    } else if fds_sorted {
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    if fds_sorted {
         // If the list of file descriptors is sorted, we can use close_range() to close the "gaps"
         // between file descriptors.
 
