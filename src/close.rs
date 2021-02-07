@@ -181,37 +181,11 @@ unsafe fn close_fds_shortcut(
         // If the list of file descriptors is sorted, we can use close_range() to close the "gaps"
         // between file descriptors.
 
-        // Skip over any elements of keep_fds that are less than minfd
-        // We know there are at least *some* elements that are >= minfd, or the `max_keep_fd <
-        // minfd` case would have been triggered.
-        let index = keep_fds.iter().position(|&fd| fd >= minfd).unwrap();
-        let keep_fds = &keep_fds[index..];
-
         debug_assert!(!keep_fds.is_empty());
 
-        // First, close the range [minfd, keep_fds[0])
-        if keep_fds[0] > minfd {
-            try_close_range(minfd as libc::c_uint, keep_fds[0] as libc::c_uint - 1)?;
-        }
-
-        // Go through and close the ranges *between* the file descriptors we were told to keep open
-        for i in 0..(keep_fds.len() - 1) {
-            // Safety: i will only ever be in the range [0, keep_fds.len() - 2].
-            // So i and i + 1 will always be valid indices in keep_fds.
-            let low = *keep_fds.get_unchecked(i);
-            let high = *keep_fds.get_unchecked(i + 1);
-
-            // If they aren't adjacent, then try to close the range between them
-            if high - low >= 2 {
-                try_close_range(low as libc::c_uint + 1, high as libc::c_uint - 1)?;
-            }
-        }
-
-        // Now close from the last file descriptor onward
-        return try_close_range(
-            keep_fds[keep_fds.len() - 1] as libc::c_uint + 1,
-            libc::c_uint::MAX,
-        );
+        return crate::util::apply_range(minfd, keep_fds, |low, high| {
+            try_close_range(low as libc::c_uint, high as libc::c_uint)
+        });
     }
 
     // We can't do any optimizations without calling iter_possible_fds()

@@ -108,6 +108,40 @@ pub fn is_fd_valid(fd: libc::c_int) -> bool {
     unsafe { libc::fcntl(fd, libc::F_GETFD) >= 0 }
 }
 
+#[cfg(target_os = "linux")]
+pub fn apply_range<F: FnMut(libc::c_int, libc::c_int) -> Result<(), ()>>(
+    minfd: libc::c_int,
+    mut keep_fds: &[libc::c_int],
+    mut func: F,
+) -> Result<(), ()> {
+    // Skip over any elements of keep_fds that are less than minfd
+    if let Some(index) = keep_fds.iter().position(|&fd| fd >= minfd) {
+        keep_fds = &keep_fds[index..];
+    } else {
+        // keep_fds is empty (or would be when all elements < minfd are removed)
+        return func(minfd, libc::c_int::MAX);
+    }
+
+    if keep_fds[0] > minfd {
+        func(minfd, keep_fds[0] - 1)?;
+    }
+
+    for i in 0..(keep_fds.len() - 1) {
+        // Safety: i will only ever be in the range [0, keep_fds.len() - 2].
+        // So i and i + 1 will always be valid indices in keep_fds.
+        let low = unsafe { *keep_fds.get_unchecked(i) };
+        let high = unsafe { *keep_fds.get_unchecked(i + 1) };
+
+        debug_assert!(high >= low);
+
+        if high - low >= 2 {
+            func(low + 1, high - 1)?;
+        }
+    }
+
+    func(keep_fds[keep_fds.len() - 1] + 1, libc::c_int::MAX)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -224,5 +258,63 @@ mod tests {
             &[4, 5, 8, 10, 3]
         );
         assert_eq!(minfd, 3);
+    }
+
+    #[test]
+    fn test_apply_range() {
+        macro_rules! check_ok {
+            ($minfd:expr, [$($keep_fds:expr),* $(,)?], [$($calls:expr),* $(,)?] $(,)?) => {{
+                let mut ranges = [(0, 0); 100];
+                let mut len = 0;
+
+                apply_range($minfd, &[$($keep_fds),*], |low, high| {
+                    *ranges.get_mut(len).unwrap() = (low, high);
+                    len += 1;
+                    Ok(())
+                }).unwrap();
+
+                assert_eq!(&ranges[..len], [$($calls),*]);
+            }}
+        }
+
+        check_ok!(0, [], [(0, libc::c_int::MAX)]);
+        check_ok!(-100, [], [(-100, libc::c_int::MAX)]);
+
+        check_ok!(3, [0, 2, 3, 4, 5, 6], [(7, libc::c_int::MAX)]);
+        check_ok!(3, [0, 2], [(3, libc::c_int::MAX)]);
+
+        check_ok!(3, [3, 4, 5, 6], [(7, libc::c_int::MAX)]);
+        check_ok!(3, [4, 5, 6], [(3, 3), (7, libc::c_int::MAX)]);
+        check_ok!(3, [5, 6, 9, 10], [(3, 4), (7, 8), (11, libc::c_int::MAX)]);
+        check_ok!(
+            3,
+            [5, 6, 9, 10, 20, 23],
+            [(3, 4), (7, 8), (11, 19), (21, 22), (24, libc::c_int::MAX)],
+        );
+
+        macro_rules! check_err {
+            ($minfd:expr, [$($keep_fds:expr),* $(,)?], $call:expr $(,)?) => {{
+                let mut call = None;
+
+                apply_range($minfd, &[$($keep_fds),*], |low, high| {
+                    assert!(call.is_none());
+                    call = Some((low, high));
+                    Err(())
+                }).unwrap_err();
+
+                assert_eq!(call.unwrap(), $call);
+            }}
+        }
+
+        check_err!(0, [], (0, libc::c_int::MAX));
+        check_err!(-100, [], (-100, libc::c_int::MAX));
+
+        check_err!(3, [0, 2, 3, 4, 5, 6], (7, libc::c_int::MAX));
+        check_err!(3, [0, 2], (3, libc::c_int::MAX));
+
+        check_err!(3, [3, 4, 5, 6], (7, libc::c_int::MAX));
+        check_err!(3, [4, 5, 6], (3, 3));
+        check_err!(3, [5, 6, 9, 10], (3, 4));
+        check_err!(3, [5, 6, 9, 10, 20, 23], (3, 4),);
     }
 }
