@@ -126,11 +126,12 @@ unsafe fn try_close_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<()
     // to fail and make the code incorrectly assume that it isn't available.
     debug_assert!(minfd <= maxfd, "{} > {}", minfd, maxfd);
 
+    #[allow(clippy::unnecessary_cast)]
     if libc::syscall(
         crate::sys::SYS_CLOSE_RANGE,
         minfd as libc::c_uint,
         maxfd as libc::c_uint,
-        0,
+        0 as libc::c_uint,
     ) == 0
     {
         Ok(())
