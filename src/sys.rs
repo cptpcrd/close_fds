@@ -8,6 +8,9 @@ pub const SYS_GETDIRENTRIES64: libc::c_int = 344;
 #[cfg(target_os = "linux")]
 pub const SYS_CLOSE_RANGE: libc::c_long = 436;
 
+#[cfg(target_os = "linux")]
+pub const CLOSE_RANGE_CLOEXEC: libc::c_uint = 1 << 2;
+
 #[cfg(target_os = "freebsd")]
 extern "C" {
     pub fn closefrom(lowfd: libc::c_int);
