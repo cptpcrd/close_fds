@@ -260,6 +260,7 @@ mod tests {
         assert_eq!(minfd, 3);
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn test_apply_range() {
         macro_rules! check_ok {
