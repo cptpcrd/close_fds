@@ -203,6 +203,7 @@ jobs:
           name: ${{ matrix.toolchain }}-${{ matrix.target }}
           fail_ci_if_error: true
           env_vars: OS,TARGET,TOOLCHAIN,JOB
+          files: ./lcov.info
         env:
           JOB: ${{ github.job }}
           OS: ${{ matrix.os }}
