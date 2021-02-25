@@ -321,7 +321,7 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
     mangle_keep_fds(&mut openfds);
 
     // Set them all as non-close-on-exec
-    for fd in openfds.iter() {
+    for fd in openfds.iter().chain(extra_closedfds.iter()) {
         set_fd_cloexec(*fd, false);
     }
     // Make most of them close-on-exec with set_fds_cloexec_threadsafe()
@@ -335,7 +335,7 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
     }
 
     // Set them all as non-close-on-exec
-    for fd in openfds.iter() {
+    for fd in openfds.iter().chain(extra_closedfds.iter()) {
         set_fd_cloexec(*fd, false);
     }
     // Make most of them close-on-exec with set_fds_cloexec_threadsafe()
