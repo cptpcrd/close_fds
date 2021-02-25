@@ -358,6 +358,7 @@ fn run_tests() {
     run_basic_test(close_fds_keep1_test);
     run_basic_test(close_fds_keep2_test);
 
+    large_open_fds_test(|keep_fds| keep_fds.sort_unstable());
     large_open_fds_test(|_keep_fds| ());
     large_open_fds_test(|keep_fds| {
         keep_fds.sort_unstable_by(|a, b| ((a + b) % 5).cmp(&3));
