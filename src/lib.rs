@@ -132,6 +132,8 @@ fn set_fds_cloexec_generic(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int],
 
     let (max_keep_fd, fds_sorted) = util::inspect_keep_fds(keep_fds);
 
+    keep_fds = crate::util::simplify_keep_fds(keep_fds, fds_sorted, &mut minfd);
+
     #[cfg(target_os = "linux")]
     {
         use core::sync::atomic::{AtomicBool, Ordering};
