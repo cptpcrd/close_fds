@@ -157,7 +157,7 @@ pub fn set_cloexec(fd: libc::c_int) {
 mod tests {
     use super::*;
 
-    fn with_fd<F: FnOnce(libc::c_int)>(mut f: F) {
+    fn with_fd<F: FnOnce(libc::c_int)>(f: F) {
         let fd = unsafe { libc::open(b"/\0".as_ptr() as *const _, libc::O_RDONLY) };
         assert!(fd >= 0);
 
