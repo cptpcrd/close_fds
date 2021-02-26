@@ -142,6 +142,17 @@ pub fn apply_range<F: FnMut(libc::c_int, libc::c_int) -> Result<(), ()>>(
     func(keep_fds[keep_fds.len() - 1] + 1, libc::c_int::MAX)
 }
 
+pub fn set_cloexec(fd: libc::c_int) {
+    let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+
+    if flags >= 0 && (flags & libc::FD_CLOEXEC) != libc::FD_CLOEXEC {
+        // fcntl(F_GETFD) succeeded, and it did *not* return the FD_CLOEXEC flag
+        unsafe {
+            libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
