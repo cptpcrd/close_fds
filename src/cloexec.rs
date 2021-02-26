@@ -8,26 +8,30 @@ static mut MAY_HAVE_CLOSE_RANGE_CLOEXEC: AtomicBool = AtomicBool::new(true);
 
 #[cfg(target_os = "linux")]
 #[inline]
-unsafe fn set_cloexec_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<(), ()> {
+fn set_cloexec_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<(), ()> {
     debug_assert!(minfd <= maxfd, "{} > {}", minfd, maxfd);
 
-    if libc::syscall(
-        sys::SYS_CLOSE_RANGE,
-        minfd as libc::c_uint,
-        maxfd as libc::c_uint,
-        sys::CLOSE_RANGE_CLOEXEC,
-    ) == 0
+    if unsafe {
+        libc::syscall(
+            sys::SYS_CLOSE_RANGE,
+            minfd as libc::c_uint,
+            maxfd as libc::c_uint,
+            sys::CLOSE_RANGE_CLOEXEC,
+        )
+    } == 0
     {
         Ok(())
     } else {
-        MAY_HAVE_CLOSE_RANGE_CLOEXEC.store(false, Ordering::Relaxed);
+        unsafe {
+            MAY_HAVE_CLOSE_RANGE_CLOEXEC.store(false, Ordering::Relaxed);
+        }
         Err(())
     }
 }
 
 #[cfg(target_os = "linux")]
 #[inline]
-unsafe fn set_cloexec_shortcut(
+fn set_cloexec_shortcut(
     minfd: libc::c_int,
     keep_fds: &[libc::c_int],
     max_keep_fd: libc::c_int,
@@ -58,7 +62,7 @@ pub fn set_fds_cloexec_generic(
     keep_fds = util::simplify_keep_fds(keep_fds, fds_sorted, &mut minfd);
 
     #[cfg(target_os = "linux")]
-    if unsafe { set_cloexec_shortcut(minfd, keep_fds, max_keep_fd, fds_sorted) }.is_ok() {
+    if set_cloexec_shortcut(minfd, keep_fds, max_keep_fd, fds_sorted).is_ok() {
         return;
     }
 
@@ -69,7 +73,7 @@ pub fn set_fds_cloexec_generic(
 
             #[cfg(target_os = "linux")]
             if unsafe { MAY_HAVE_CLOSE_RANGE_CLOEXEC.load(Ordering::Relaxed) }
-                && unsafe { set_cloexec_range(fd as libc::c_uint, libc::c_uint::MAX).is_ok() }
+                && set_cloexec_range(fd as libc::c_uint, libc::c_uint::MAX).is_ok()
             {
                 return;
             }
