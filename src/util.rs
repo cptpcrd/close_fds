@@ -157,6 +157,17 @@ pub fn set_cloexec(fd: libc::c_int) {
 mod tests {
     use super::*;
 
+    fn with_fd<F: FnOnce(libc::c_int)>(mut f: F) {
+        let fd = unsafe { libc::open(b"/\0".as_ptr() as *const _, libc::O_RDONLY) };
+        assert!(fd >= 0);
+
+        f(fd);
+
+        unsafe {
+            libc::close(fd);
+        }
+    }
+
     #[test]
     fn test_inspect_keep_fds() {
         assert_eq!(inspect_keep_fds(&[]), (-1, true));
@@ -328,5 +339,35 @@ mod tests {
         check_err!(3, [4, 5, 6], (3, 3));
         check_err!(3, [5, 6, 9, 10], (3, 4));
         check_err!(3, [5, 6, 9, 10, 20, 23], (3, 4),);
+    }
+
+    #[test]
+    fn test_is_fd_valid() {
+        assert!(!is_fd_valid(-1));
+        assert!(!is_fd_valid(libc::c_int::MAX));
+
+        assert!(is_fd_valid(0));
+        with_fd(|fd| {
+            assert!(is_fd_valid(fd));
+        });
+    }
+
+    #[test]
+    fn test_set_cloexec() {
+        // No panic on errors like this
+        set_cloexec(-1);
+        set_cloexec(libc::c_int::MAX);
+
+        fn is_cloexec(fd: libc::c_int) -> bool {
+            let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+            assert!(flags >= 0);
+            flags & libc::FD_CLOEXEC == libc::FD_CLOEXEC
+        }
+
+        with_fd(|fd| {
+            assert!(!is_cloexec(fd));
+            set_cloexec(fd);
+            assert!(is_cloexec(fd));
+        });
     }
 }
