@@ -127,7 +127,9 @@ pub fn set_fds_cloexec_threadsafe(minfd: libc::c_int, keep_fds: &[libc::c_int]) 
     set_fds_cloexec_generic(minfd, keep_fds, true)
 }
 
-fn set_fds_cloexec_generic(minfd: libc::c_int, mut keep_fds: &[libc::c_int], thread_safe: bool) {
+fn set_fds_cloexec_generic(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int], thread_safe: bool) {
+    minfd = core::cmp::max(minfd, 0);
+
     let (max_keep_fd, fds_sorted) = util::inspect_keep_fds(keep_fds);
 
     #[cfg(target_os = "linux")]
