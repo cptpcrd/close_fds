@@ -68,7 +68,7 @@ pub fn iter_open_fds_threadsafe(minfd: libc::c_int) -> FdIter {
 /// You should only use this function instead of `iter_open_fds()` if you immediately perform an
 /// operation that implicitly checks if the file descriptor is valid. For example:
 ///
-/// ```
+/// ```no_run
 /// use std::os::unix::io::FromRawFd;
 ///
 /// for fd in close_fds::iter_possible_fds(0) {
