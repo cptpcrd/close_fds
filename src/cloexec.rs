@@ -1,4 +1,4 @@
-use crate::{fditer, sys, util};
+use crate::{fditer, util};
 
 #[cfg(target_os = "linux")]
 use core::sync::atomic::{AtomicBool, Ordering};
@@ -13,10 +13,10 @@ fn set_cloexec_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<(), ()>
 
     if unsafe {
         libc::syscall(
-            sys::SYS_CLOSE_RANGE,
+            crate::sys::SYS_CLOSE_RANGE,
             minfd as libc::c_uint,
             maxfd as libc::c_uint,
-            sys::CLOSE_RANGE_CLOEXEC,
+            crate::sys::CLOSE_RANGE_CLOEXEC,
         )
     } == 0
     {
