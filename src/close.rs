@@ -38,15 +38,8 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
 
     keep_fds = crate::util::simplify_keep_fds(keep_fds, fds_sorted, &mut minfd);
 
-    // These OSes have (or may have) a closefrom() or close_range() syscall that we can use to
+    // Some OSes have (or may have) a closefrom() or close_range() syscall that we can use to
     // improve performance if certain conditions are true.
-    #[cfg(any(
-        target_os = "linux",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "dragonfly"
-    ))]
     if close_fds_shortcut(minfd, keep_fds, max_keep_fd, fds_sorted).is_ok() {
         return;
     }
@@ -216,13 +209,6 @@ unsafe fn try_close_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<()
     }
 }
 
-#[cfg(any(
-    target_os = "linux",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_os = "dragonfly"
-))]
 #[allow(unused_variables)]
 #[inline]
 unsafe fn close_fds_shortcut(
