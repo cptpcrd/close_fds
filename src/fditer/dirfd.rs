@@ -24,9 +24,9 @@ unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     ) as isize
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 type RawDirent = libc::dirent;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 #[inline]
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
     let mut offset: libc::off_t = 0;
@@ -147,7 +147,7 @@ impl DirFdIter {
             )
         };
 
-        #[cfg(target_os = "macos")]
+        #[cfg(any(target_os = "macos", target_os = "ios"))]
         let dirfd = unsafe {
             // On macOS, /dev/fd is correct
 
@@ -202,6 +202,7 @@ impl DirFdIter {
                 target_os = "freebsd",
                 target_os = "netbsd",
                 target_os = "macos",
+                target_os = "ios",
             ))] {
                 // Trailing NUL
                 debug_assert_eq!(entry.d_name[entry.d_namlen as usize], 0);

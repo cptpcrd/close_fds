@@ -1,7 +1,7 @@
 #[cfg(target_os = "freebsd")]
 pub const KERN_PROC_NFDS: libc::c_int = 43;
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 pub const SYS_GETDIRENTRIES64: libc::c_int = 344;
 
 // This is the correct value for every architecture except alpha, which Rust doesn't support.
