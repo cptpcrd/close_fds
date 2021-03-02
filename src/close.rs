@@ -27,8 +27,8 @@
 /// descriptors that you pass are high-numbered (i.e. 50 or 100), sort the slice first. This will
 /// give you significant performance improvements (especially on Linux 5.9+).
 ///
-/// `close_fds` can't just copy the slice and sort it for you because it's a `#![no_std]` crate, so
-/// it can't allocate memory.
+/// `close_fds` can't just copy the slice and sort it for you because allocating memory is not
+/// async-signal-safe (see ["Async-signal-safety"](./index.html#async-signal-safety)).
 pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int]) {
     if minfd < 0 {
         minfd = 0;
