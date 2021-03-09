@@ -9,12 +9,12 @@ pub fn inspect_keep_fds(keep_fds: &[libc::c_int]) -> (libc::c_int, bool) {
         // Check for a new maximum file descriptor
         if fd > max_keep_fd {
             max_keep_fd = fd;
-        }
-
-        if last_fd > fd {
+            debug_assert!(last_fd <= fd);
+        } else if last_fd > fd {
             // Out of order
             fds_sorted = false;
         }
+
         last_fd = fd;
     }
 
