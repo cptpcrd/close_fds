@@ -79,28 +79,51 @@ pub fn check_should_keep(keep_fds: &mut &[libc::c_int], fd: libc::c_int, fds_sor
 #[cfg(target_os = "linux")]
 #[inline]
 pub fn is_wsl_1() -> bool {
-    // It seems that on WSL 1 the kernel "release name" ends with "-Microsoft", and on WSL 2 the
-    // release name ends with "-microsoft-standard". So we look for "Microsoft" at the end.
+    use core::sync::atomic::{AtomicU8, Ordering};
 
-    let mut uname = unsafe { core::mem::zeroed() };
+    // 0=Not running on WSL 1
+    // 1=Running on WSL 1
+    // >1=Uninitialized
+    static mut IS_WSL1: AtomicU8 = AtomicU8::new(2);
 
-    unsafe {
-        libc::uname(&mut uname);
+    match unsafe { IS_WSL1.load(Ordering::Relaxed) } {
+        // Already initialized; return the result
+        1 => true,
+        0 => false,
+
+        _ => {
+            let mut uname = unsafe { core::mem::zeroed() };
+
+            unsafe {
+                libc::uname(&mut uname);
+            }
+
+            let uname_release_len = uname
+                .release
+                .iter()
+                .position(|c| *c == 0)
+                .unwrap_or_else(|| uname.release.len());
+
+            // uname.release is an array of `libc::c_char`s. `libc::c_char` may be either a u8 or
+            // an i8, so unfortunately we have to use unsafe operations to get a reference as a
+            // &[u8].
+            let uname_release = unsafe {
+                core::slice::from_raw_parts(uname.release.as_ptr() as *const u8, uname_release_len)
+            };
+
+            // It seems that on WSL 1 the kernel "release name" ends with "-Microsoft", and on WSL
+            // 2 the release name ends with "-microsoft-standard". So we look for "Microsoft" at
+            // the end to mean WSL 1.
+            let is_wsl1 = uname_release.ends_with(b"Microsoft");
+
+            // Store the result
+            unsafe {
+                IS_WSL1.store(is_wsl1 as u8, Ordering::Relaxed);
+            }
+
+            is_wsl1
+        }
     }
-
-    let uname_release_len = uname
-        .release
-        .iter()
-        .position(|c| *c == 0)
-        .unwrap_or_else(|| uname.release.len());
-
-    // uname.release is an array of `libc::c_char`s. `libc::c_char` may be either a u8 or an i8, so
-    // unfortunately we have to use unsafe operations to get a reference as a &[u8].
-    let uname_release = unsafe {
-        core::slice::from_raw_parts(uname.release.as_ptr() as *const u8, uname_release_len)
-    };
-
-    uname_release.ends_with(b"Microsoft")
 }
 
 #[inline]

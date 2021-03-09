@@ -93,28 +93,8 @@ impl DirFdIter {
             // However, on WSL 1, getdents64() doesn't always return the entries in order, and also
             // seems to skip some file descriptors. So skip it on WSL 1.
 
-            use core::sync::atomic::{AtomicU8, Ordering};
-
-            // 0=Not running on WSL 1
-            // 1=Running on WSL 1
-            // >1=Uninitialized
-            static mut IS_WSL1: AtomicU8 = AtomicU8::new(2);
-
-            match IS_WSL1.load(Ordering::Relaxed) {
-                // We're on WSL 1; abort
-                1 => return None,
-
-                // We're not on WSL 1; continue
-                0 => (),
-
-                _ => {
-                    if crate::util::is_wsl_1() {
-                        IS_WSL1.store(1, Ordering::Relaxed);
-                        return None;
-                    } else {
-                        IS_WSL1.store(0, Ordering::Relaxed);
-                    }
-                }
+            if crate::util::is_wsl_1() {
+                return None;
             }
 
             libc::open(
