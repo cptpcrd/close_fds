@@ -89,20 +89,38 @@ impl DirFdIter {
     pub fn open(minfd: libc::c_int) -> Option<Self> {
         #[cfg(target_os = "linux")]
         let dirfd = unsafe {
-            // Try /proc/self/fd on Linux
+            // Try /proc/self/fd on Linux.
+            // However, on WSL 1, getdents64() doesn't always return the entries in order, and also
+            // seems to skip some file descriptors. So skip it on WSL 1.
 
-            if crate::util::is_wsl_1() {
-                // On WSL 1, getdents64() doesn't always return the entries in order.
-                // It also seems to skip some file descriptors.
-                // We can't trust it.
+            use core::sync::atomic::{AtomicU8, Ordering};
 
-                -1
-            } else {
-                libc::open(
-                    "/proc/self/fd\0".as_ptr() as *const libc::c_char,
-                    libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
-                )
+            // 0=Not running on WSL 1
+            // 1=Running on WSL 1
+            // >1=Uninitialized
+            static mut IS_WSL1: AtomicU8 = AtomicU8::new(2);
+
+            match IS_WSL1.load(Ordering::Relaxed) {
+                // We're on WSL 1; abort
+                1 => return None,
+
+                // We're not on WSL 1; continue
+                0 => (),
+
+                _ => {
+                    if crate::util::is_wsl_1() {
+                        IS_WSL1.store(1, Ordering::Relaxed);
+                        return None;
+                    } else {
+                        IS_WSL1.store(0, Ordering::Relaxed);
+                    }
+                }
             }
+
+            libc::open(
+                "/proc/self/fd\0".as_ptr() as *const libc::c_char,
+                libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
+            )
         };
 
         #[cfg(target_os = "freebsd")]
