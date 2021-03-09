@@ -29,14 +29,14 @@ type RawDirent = libc::dirent;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 #[inline]
 unsafe fn getdents(fd: libc::c_int, buf: &mut [u8]) -> isize {
-    let mut offset: libc::off_t = 0;
+    let mut offset = core::mem::MaybeUninit::<libc::off_t>::uninit();
 
     libc::syscall(
         crate::sys::SYS_GETDIRENTRIES64,
         fd,
         buf.as_mut_ptr(),
         buf.len(),
-        &mut offset,
+        offset.as_mut_ptr(),
     ) as isize
 }
 
