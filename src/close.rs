@@ -99,6 +99,14 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
 
                     // On other systems, this just allows us to skip the contains() check
                     libc::close(fd);
+
+                    // We also know that none of the remaining file descriptors are in keep_fds, so
+                    // we can just iterate through and close all of them directly
+                    for fd in fditer {
+                        debug_assert!(fd > max_keep_fd);
+                        libc::close(fd);
+                    }
+                    return;
                 }
             }
         } else if !crate::util::check_should_keep(&mut keep_fds, fd, fds_sorted) {
