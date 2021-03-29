@@ -46,7 +46,15 @@ fn check_sorted<T: Ord>(items: &[T]) {
     }
 }
 
-fn run_basic_test(callback: fn(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int)) {
+fn run_basic_test(
+    callback: fn(
+        fd1: libc::c_int,
+        fd2: libc::c_int,
+        fd3: libc::c_int,
+        builder: close_fds::CloseFdsBuilder,
+    ),
+    builder: close_fds::CloseFdsBuilder,
+) {
     let f1 = std::fs::File::open("/").unwrap();
     let f2 = std::fs::File::open("/").unwrap();
     let f3 = std::fs::File::open("/").unwrap();
@@ -61,125 +69,133 @@ fn run_basic_test(callback: fn(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_
     assert!(is_fd_open(fd2));
     assert!(!is_fd_open(fd3));
 
-    callback(fd1, fd2, fd3);
+    callback(fd1, fd2, fd3, builder.clone());
 }
 
-fn iter_open_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
+fn iter_open_fds_test(
+    fd1: libc::c_int,
+    fd2: libc::c_int,
+    fd3: libc::c_int,
+    _builder: close_fds::CloseFdsBuilder,
+) {
     let mut fds: Vec<libc::c_int>;
 
-    fds = close_fds::iter_open_fds(-1).collect();
-    check_sorted(&fds);
-    assert!(!fds.contains(&-1));
-    assert!(fds.contains(&0));
-    assert!(fds.contains(&fd1));
-    assert!(fds.contains(&fd2));
-    assert!(!fds.contains(&fd3));
+    for (fs, threadsafe) in [(true, true), (true, false), (false, true), (false, false)]
+        .iter()
+        .cloned()
+    {
+        let mut builder = close_fds::FdIterBuilder::new();
+        builder.allow_filesystem(fs);
+        builder.threadsafe(threadsafe);
 
-    assert_eq!(close_fds::iter_open_fds(-1).min(), Some(0));
-    assert_eq!(close_fds::iter_open_fds(-1).max().as_ref(), fds.last());
-    assert_eq!(close_fds::iter_open_fds(-1).count(), fds.len());
+        fds = builder.iter_from(-1).collect();
+        check_sorted(&fds);
+        assert!(!fds.contains(&-1));
+        assert!(fds.contains(&0));
+        assert!(fds.contains(&fd1));
+        assert!(fds.contains(&fd2));
+        assert!(!fds.contains(&fd3));
 
-    fds = close_fds::iter_open_fds_threadsafe(-1).collect();
-    check_sorted(&fds);
-    assert!(!fds.contains(&-1));
-    assert!(fds.contains(&0));
-    assert!(fds.contains(&fd1));
-    assert!(fds.contains(&fd2));
-    assert!(!fds.contains(&fd3));
+        assert_eq!(builder.iter_from(-1).min(), Some(0));
+        assert_eq!(builder.iter_from(-1).max().as_ref(), fds.last());
+        assert_eq!(builder.iter_from(-1).count(), fds.len());
 
-    assert_eq!(close_fds::iter_open_fds_threadsafe(-1).min(), Some(0));
-    assert_eq!(
-        close_fds::iter_open_fds_threadsafe(-1).max().as_ref(),
-        fds.last()
-    );
-    assert_eq!(close_fds::iter_open_fds_threadsafe(-1).count(), fds.len());
+        fds = builder.iter_from(0).collect();
+        check_sorted(&fds);
+        assert!(fds.contains(&0));
+        assert!(fds.contains(&fd1));
+        assert!(fds.contains(&fd2));
+        assert!(!fds.contains(&fd3));
 
-    fds = close_fds::iter_open_fds(0).collect();
-    check_sorted(&fds);
-    assert!(fds.contains(&0));
-    assert!(fds.contains(&fd1));
-    assert!(fds.contains(&fd2));
-    assert!(!fds.contains(&fd3));
+        // Test handling of minfd
 
-    // Test handling of minfd
+        fds = builder.iter_from(fd1).collect();
+        check_sorted(&fds);
+        assert!(!fds.contains(&0));
+        assert!(fds.contains(&fd1));
+        assert!(fds.contains(&fd2));
+        assert!(!fds.contains(&fd3));
 
-    fds = close_fds::iter_open_fds(fd1).collect();
-    check_sorted(&fds);
-    assert!(!fds.contains(&0));
-    assert!(fds.contains(&fd1));
-    assert!(fds.contains(&fd2));
-    assert!(!fds.contains(&fd3));
+        fds = builder.iter_from(fd2).collect();
+        check_sorted(&fds);
+        assert!(!fds.contains(&0));
+        assert!(!fds.contains(&fd1));
+        assert!(fds.contains(&fd2));
+        assert!(!fds.contains(&fd3));
 
-    fds = close_fds::iter_open_fds(fd2).collect();
-    check_sorted(&fds);
-    assert!(!fds.contains(&0));
-    assert!(!fds.contains(&fd1));
-    assert!(fds.contains(&fd2));
-    assert!(!fds.contains(&fd3));
-
-    fds = close_fds::iter_open_fds(fd3).collect();
-    check_sorted(&fds);
-    assert!(!fds.contains(&0));
-    assert!(!fds.contains(&fd1));
-    assert!(!fds.contains(&fd2));
-    assert!(!fds.contains(&fd3));
+        fds = builder.iter_from(fd3).collect();
+        check_sorted(&fds);
+        assert!(!fds.contains(&0));
+        assert!(!fds.contains(&fd1));
+        assert!(!fds.contains(&fd2));
+        assert!(!fds.contains(&fd3));
+    }
 }
 
-fn iter_possible_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
+fn iter_possible_fds_test(
+    fd1: libc::c_int,
+    fd2: libc::c_int,
+    fd3: libc::c_int,
+    _builder: close_fds::CloseFdsBuilder,
+) {
     let mut fds: Vec<libc::c_int>;
 
-    fds = close_fds::iter_possible_fds(-1).collect();
-    check_sorted(&fds);
-    assert!(!fds.contains(&-1));
-    assert!(fds.contains(&fd1));
-    assert!(fds.contains(&fd2));
-    // Don't check for fd3 not being present because it might legitimately be
-    // returned by iter_possible_fds()
+    for (fs, threadsafe) in [(true, true), (true, false), (false, true), (false, false)]
+        .iter()
+        .cloned()
+    {
+        let mut builder = close_fds::FdIterBuilder::new();
+        builder.allow_filesystem(fs);
+        builder.threadsafe(threadsafe);
+        builder.possible(true);
 
-    assert_eq!(close_fds::iter_possible_fds(-1).min(), Some(0));
-    assert_eq!(close_fds::iter_possible_fds(-1).max().as_ref(), fds.last());
-    assert_eq!(close_fds::iter_possible_fds(-1).count(), fds.len());
+        fds = builder.iter_from(-1).collect();
+        check_sorted(&fds);
+        assert!(!fds.contains(&-1));
+        assert!(fds.contains(&0));
+        assert!(fds.contains(&fd1));
+        assert!(fds.contains(&fd2));
+        // Don't check for fd3 not being present because it might legitimately be
+        // returned by iter_possible_fds()
 
-    fds = close_fds::iter_possible_fds_threadsafe(-1).collect();
-    check_sorted(&fds);
-    assert!(!fds.contains(&-1));
-    assert!(fds.contains(&fd1));
-    assert!(fds.contains(&fd2));
+        assert_eq!(builder.iter_from(-1).min(), Some(0));
+        assert_eq!(builder.iter_from(-1).max().as_ref(), fds.last());
+        assert_eq!(builder.iter_from(-1).count(), fds.len());
 
-    assert_eq!(close_fds::iter_possible_fds_threadsafe(-1).min(), Some(0));
-    assert_eq!(
-        close_fds::iter_possible_fds_threadsafe(-1).max().as_ref(),
-        fds.last()
-    );
-    assert_eq!(
-        close_fds::iter_possible_fds_threadsafe(-1).count(),
-        fds.len()
-    );
+        fds = builder.iter_from(0).collect();
+        check_sorted(&fds);
+        assert!(fds.contains(&0));
+        assert!(fds.contains(&fd1));
+        assert!(fds.contains(&fd2));
 
-    fds = close_fds::iter_possible_fds(0).collect();
-    check_sorted(&fds);
-    assert!(fds.contains(&fd1));
-    assert!(fds.contains(&fd2));
+        // Test handling of minfd
 
-    // Test handling of minfd
+        fds = builder.iter_from(fd1).collect();
+        check_sorted(&fds);
+        assert!(!fds.contains(&0));
+        assert!(fds.contains(&fd1));
+        assert!(fds.contains(&fd2));
 
-    fds = close_fds::iter_possible_fds(fd1).collect();
-    check_sorted(&fds);
-    assert!(fds.contains(&fd1));
-    assert!(fds.contains(&fd2));
+        fds = builder.iter_from(fd2).collect();
+        check_sorted(&fds);
+        assert!(!fds.contains(&0));
+        assert!(!fds.contains(&fd1));
+        assert!(fds.contains(&fd2));
 
-    fds = close_fds::iter_possible_fds(fd2).collect();
-    check_sorted(&fds);
-    assert!(!fds.contains(&fd1));
-    assert!(fds.contains(&fd2));
-
-    fds = close_fds::iter_possible_fds(fd3).collect();
-    check_sorted(&fds);
-    assert!(!fds.contains(&fd1));
-    assert!(!fds.contains(&fd2));
+        fds = builder.iter_from(fd3).collect();
+        check_sorted(&fds);
+        assert!(!fds.contains(&0));
+        assert!(!fds.contains(&fd1));
+        assert!(!fds.contains(&fd2));
+    }
 }
 
-fn close_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
+fn close_fds_test(
+    fd1: libc::c_int,
+    fd2: libc::c_int,
+    fd3: libc::c_int,
+    builder: close_fds::CloseFdsBuilder,
+) {
     let mut fds: Vec<libc::c_int>;
 
     fds = close_fds::iter_open_fds(fd1).collect();
@@ -190,7 +206,7 @@ fn close_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
 
     // Add 0 just to check the case where keep_fds[0] < minfd
     unsafe {
-        close_fds::close_open_fds(fd1, &[0]);
+        builder.clone().keep_fds(&[0]).closefrom(fd1);
     }
 
     fds = close_fds::iter_open_fds(fd1).collect();
@@ -200,7 +216,12 @@ fn close_fds_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
     assert!(!fds.contains(&fd3));
 }
 
-fn close_fds_keep1_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
+fn close_fds_keep1_test(
+    fd1: libc::c_int,
+    fd2: libc::c_int,
+    fd3: libc::c_int,
+    builder: close_fds::CloseFdsBuilder,
+) {
     let mut fds: Vec<libc::c_int>;
 
     fds = close_fds::iter_open_fds(fd1).collect();
@@ -210,7 +231,7 @@ fn close_fds_keep1_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
     assert!(!fds.contains(&fd3));
 
     unsafe {
-        close_fds::close_open_fds(fd1, &[fd1, fd3]);
+        builder.clone().keep_fds(&[fd1, fd3]).closefrom(fd1);
     }
 
     fds = close_fds::iter_open_fds(fd1).collect();
@@ -220,7 +241,12 @@ fn close_fds_keep1_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
     assert!(!fds.contains(&fd3));
 }
 
-fn close_fds_keep2_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
+fn close_fds_keep2_test(
+    fd1: libc::c_int,
+    fd2: libc::c_int,
+    fd3: libc::c_int,
+    builder: close_fds::CloseFdsBuilder,
+) {
     let mut fds: Vec<libc::c_int>;
 
     fds = close_fds::iter_open_fds(fd1).collect();
@@ -230,7 +256,7 @@ fn close_fds_keep2_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
     assert!(!fds.contains(&fd3));
 
     unsafe {
-        close_fds::close_open_fds(fd1, &[fd2, fd3]);
+        builder.clone().keep_fds(&[fd2, fd3]).closefrom(fd1);
     }
 
     fds = close_fds::iter_open_fds(fd1).collect();
@@ -240,7 +266,35 @@ fn close_fds_keep2_test(fd1: libc::c_int, fd2: libc::c_int, fd3: libc::c_int) {
     assert!(!fds.contains(&fd3));
 }
 
-fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
+fn close_fds_keep3_test(
+    fd1: libc::c_int,
+    fd2: libc::c_int,
+    fd3: libc::c_int,
+    builder: close_fds::CloseFdsBuilder,
+) {
+    let mut fds: Vec<libc::c_int>;
+
+    fds = close_fds::iter_open_fds(fd1).collect();
+    check_sorted(&fds);
+    assert!(fds.contains(&fd1));
+    assert!(fds.contains(&fd2));
+    assert!(!fds.contains(&fd3));
+
+    unsafe {
+        builder.clone().keep_fds_sorted(&[fd2]).closefrom(fd1);
+    }
+
+    fds = close_fds::iter_open_fds(fd1).collect();
+    check_sorted(&fds);
+    assert!(!fds.contains(&fd1));
+    assert!(fds.contains(&fd2));
+    assert!(!fds.contains(&fd3));
+}
+
+fn large_open_fds_test(
+    mangle_keep_fds: fn(&mut [libc::c_int]),
+    builder: close_fds::CloseFdsBuilder,
+) {
     let mut openfds = Vec::new();
 
     for _ in 0..150 {
@@ -290,8 +344,8 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
         set_fd_cloexec(*fd, false);
         assert_eq!(is_fd_cloexec(*fd), Some(false));
     }
-    // Make them all close-on-exec with set_fds_cloexec()
-    close_fds::set_fds_cloexec(lowfd, &[]);
+    // Make them all close-on-exec
+    builder.cloexecfrom(lowfd);
     // Now make sure they're all close-on-exec
     for fd in openfds.iter() {
         assert_eq!(is_fd_cloexec(*fd), Some(true));
@@ -303,7 +357,7 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
         assert_eq!(is_fd_cloexec(*fd), Some(false));
     }
     // Make them all close-on-exec with set_fds_cloexec_threadsafe()
-    close_fds::set_fds_cloexec_threadsafe(lowfd, &[]);
+    builder.clone().threadsafe(true).cloexecfrom(lowfd);
     // Now make sure they're all close-on-exec again
     for fd in openfds.iter() {
         assert_eq!(is_fd_cloexec(*fd), Some(true));
@@ -324,8 +378,8 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
     for fd in openfds.iter().chain(extra_closedfds.iter()) {
         set_fd_cloexec(*fd, false);
     }
-    // Make most of them close-on-exec with set_fds_cloexec_threadsafe()
-    close_fds::set_fds_cloexec(lowfd, &openfds);
+    // Make most of them close-on-exec
+    builder.clone().keep_fds(&openfds).cloexecfrom(lowfd);
     // Now make sure they're all close-on-exec again
     for fd in openfds.iter() {
         assert_eq!(is_fd_cloexec(*fd), Some(false));
@@ -338,8 +392,12 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
     for fd in openfds.iter().chain(extra_closedfds.iter()) {
         set_fd_cloexec(*fd, false);
     }
-    // Make most of them close-on-exec with set_fds_cloexec_threadsafe()
-    close_fds::set_fds_cloexec_threadsafe(lowfd, &openfds);
+    // Make most of them close-on-exec
+    builder
+        .clone()
+        .threadsafe(true)
+        .keep_fds(&openfds)
+        .cloexecfrom(lowfd);
     // Check that it worked properly
     for fd in openfds.iter() {
         assert_eq!(is_fd_cloexec(*fd), Some(false));
@@ -349,7 +407,7 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
     }
 
     unsafe {
-        close_fds::close_open_fds(lowfd, &openfds);
+        builder.clone().keep_fds(&openfds).closefrom(lowfd);
     }
 
     // Again, check that our expectations match reality
@@ -377,20 +435,32 @@ fn large_open_fds_test(mangle_keep_fds: fn(&mut [libc::c_int])) {
 fn run_tests() {
     // Run all tests here because these tests can't be run in parallel
 
-    run_basic_test(iter_open_fds_test);
+    for (fs, threadsafe) in [(true, true), (true, false), (false, true), (false, false)]
+        .iter()
+        .cloned()
+    {
+        let mut builder = close_fds::CloseFdsBuilder::new();
+        builder.allow_filesystem(fs).threadsafe(threadsafe);
 
-    run_basic_test(iter_possible_fds_test);
+        run_basic_test(iter_open_fds_test, builder.clone());
 
-    run_basic_test(close_fds_test);
+        run_basic_test(iter_possible_fds_test, builder.clone());
 
-    run_basic_test(close_fds_keep1_test);
-    run_basic_test(close_fds_keep2_test);
+        run_basic_test(close_fds_test, builder.clone());
 
-    large_open_fds_test(|keep_fds| keep_fds.sort_unstable());
-    large_open_fds_test(|_keep_fds| ());
-    large_open_fds_test(|keep_fds| {
-        keep_fds.sort_unstable_by(|a, b| ((a + b) % 5).cmp(&3));
-    });
+        run_basic_test(close_fds_keep1_test, builder.clone());
+        run_basic_test(close_fds_keep2_test, builder.clone());
+        run_basic_test(close_fds_keep3_test, builder.clone());
+
+        large_open_fds_test(|keep_fds| keep_fds.sort_unstable(), builder.clone());
+        large_open_fds_test(|_keep_fds| (), builder.clone());
+        large_open_fds_test(
+            |keep_fds| {
+                keep_fds.sort_unstable_by(|a, b| ((a + b) % 5).cmp(&3));
+            },
+            builder.clone(),
+        );
+    }
 
     unsafe {
         close_fds::close_open_fds(3, &[]);

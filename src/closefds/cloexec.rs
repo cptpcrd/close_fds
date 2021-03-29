@@ -1,4 +1,4 @@
-use crate::{fditer, util};
+use crate::util;
 
 #[cfg(target_os = "linux")]
 use core::sync::atomic::{AtomicBool, Ordering};
@@ -50,14 +50,16 @@ fn set_cloexec_shortcut(
     }
 }
 
-pub fn set_fds_cloexec_generic(
+pub(crate) fn set_fds_cloexec(
     mut minfd: libc::c_int,
-    mut keep_fds: &[libc::c_int],
-    thread_safe: bool,
+    keep_fds: super::KeepFds,
+    mut itbuilder: crate::FdIterBuilder,
 ) {
-    minfd = core::cmp::max(minfd, 0);
-
-    let (max_keep_fd, fds_sorted) = util::inspect_keep_fds(keep_fds);
+    let super::KeepFds {
+        max: max_keep_fd,
+        fds: mut keep_fds,
+        sorted: fds_sorted,
+    } = keep_fds;
 
     keep_fds = util::simplify_keep_fds(keep_fds, fds_sorted, &mut minfd);
 
@@ -66,7 +68,9 @@ pub fn set_fds_cloexec_generic(
         return;
     }
 
-    for fd in fditer::iter_fds(minfd, true, thread_safe) {
+    itbuilder.possible(true);
+
+    for fd in itbuilder.iter_from(minfd) {
         if fd > max_keep_fd {
             // We know that none of the file descriptors we encounter from here onward can be in
             // keep_fds.

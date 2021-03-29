@@ -1,39 +1,4 @@
-#[cfg(any(
-    target_os = "linux",
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "solaris",
-    target_os = "illumos",
-))]
-mod dirfd;
-
-#[allow(unused_variables)]
-#[inline]
-pub fn iter_fds(mut minfd: libc::c_int, possible: bool, skip_nfds: bool) -> FdIter {
-    if minfd < 0 {
-        minfd = 0;
-    }
-
-    FdIter {
-        curfd: minfd,
-        possible,
-        maxfd: -1,
-        #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
-        skip_nfds,
-        #[cfg(any(
-            target_os = "linux",
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "solaris",
-            target_os = "illumos",
-        ))]
-        dirfd_iter: dirfd::DirFdIter::open(minfd),
-    }
-}
+use super::*;
 
 /// An iterator over the current process's file descriptors.
 ///
@@ -56,17 +21,17 @@ pub struct FdIter {
         target_os = "solaris",
         target_os = "illumos",
     ))]
-    dirfd_iter: Option<dirfd::DirFdIter>,
-    curfd: libc::c_int,
-    possible: bool,
-    maxfd: libc::c_int,
+    pub(crate) dirfd_iter: Option<dirfd::DirFdIter>,
+    pub(crate) curfd: libc::c_int,
+    pub(crate) possible: bool,
+    pub(crate) maxfd: libc::c_int,
     /// If this is true, it essentially means "don't try the 'nfds' methods of finding the maximum
     /// open file descriptor."
     /// `close_open_fds()` passes this as true on some systems becaus the system has a working
     /// closefrom() and at some point it can just close the rest of the file descriptors in one go.
     /// Additionally, the "nfds" method is not thread-safe.
     #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
-    skip_nfds: bool,
+    pub(crate) skip_nfds: bool,
 }
 
 impl FdIter {
@@ -324,134 +289,3 @@ impl Iterator for FdIter {
 }
 
 impl core::iter::FusedIterator for FdIter {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn open_files() -> [libc::c_int; 10] {
-        let mut fds = [-1; 10];
-        for cur_fd in fds.iter_mut() {
-            *cur_fd = unsafe { libc::open("/\0".as_ptr() as *const libc::c_char, libc::O_RDONLY) };
-            assert!(*cur_fd >= 0);
-        }
-        fds
-    }
-
-    unsafe fn close_files(fds: &[libc::c_int]) {
-        for &fd in fds {
-            libc::close(fd);
-        }
-    }
-
-    #[test]
-    fn test_size_hint_open() {
-        test_size_hint_generic(iter_fds(0, false, false));
-        test_size_hint_generic(iter_fds(0, false, true));
-
-        let fds = open_files();
-        test_size_hint_generic(iter_fds(0, false, false));
-        test_size_hint_generic(iter_fds(0, false, true));
-        unsafe {
-            close_files(&fds);
-        }
-    }
-
-    #[test]
-    fn test_size_hint_possible() {
-        test_size_hint_generic(iter_fds(0, true, false));
-        test_size_hint_generic(iter_fds(0, true, true));
-
-        let fds = open_files();
-        test_size_hint_generic(iter_fds(0, true, false));
-        test_size_hint_generic(iter_fds(0, true, true));
-        unsafe {
-            close_files(&fds);
-        }
-    }
-
-    fn test_size_hint_generic(mut fditer: FdIter) {
-        let (mut init_low, mut init_high) = fditer.size_hint();
-        if let Some(init_high) = init_high {
-            // Sanity check
-            assert!(init_high >= init_low);
-        }
-
-        let mut i = 0;
-        while let Some(_fd) = fditer.next() {
-            let (cur_low, cur_high) = fditer.size_hint();
-
-            // Adjust them so they're comparable to init_low and init_high
-            let adj_low = cur_low + i + 1;
-            let adj_high = if let Some(cur_high) = cur_high {
-                // Sanity check
-                assert!(cur_high >= cur_low);
-
-                Some(cur_high + i + 1)
-            } else {
-                None
-            };
-
-            // Now we adjust init_low and init_high to be the most restrictive limits that we've
-            // received so far.
-            if adj_low > init_low {
-                init_low = adj_low;
-            }
-
-            if let Some(adj_high) = adj_high {
-                if let Some(ihigh) = init_high {
-                    if adj_high < ihigh {
-                        init_high = Some(adj_high);
-                    }
-                } else {
-                    init_high = Some(adj_high);
-                }
-            }
-
-            i += 1;
-        }
-
-        // At the end, the lower boundary should be 0. The upper boundary can be anything.
-        let (final_low, _) = fditer.size_hint();
-        assert_eq!(final_low, 0);
-
-        // Now make sure that the actual count falls within the boundaries we were given
-        assert!(i >= init_low);
-        if let Some(init_high) = init_high {
-            assert!(i <= init_high);
-        }
-    }
-
-    #[test]
-    fn test_fused_open() {
-        test_fused_generic(iter_fds(0, false, false));
-        test_fused_generic(iter_fds(0, false, true));
-
-        let fds = open_files();
-        test_fused_generic(iter_fds(0, false, false));
-        test_fused_generic(iter_fds(0, false, true));
-        unsafe {
-            close_files(&fds);
-        }
-    }
-
-    #[test]
-    fn test_fused_possible() {
-        test_fused_generic(iter_fds(0, true, false));
-        test_fused_generic(iter_fds(0, true, true));
-
-        let fds = open_files();
-        test_fused_generic(iter_fds(0, true, false));
-        test_fused_generic(iter_fds(0, true, true));
-        unsafe {
-            close_files(&fds);
-        }
-    }
-
-    fn test_fused_generic(mut fditer: FdIter) {
-        // Exhaust the iterator
-        fditer.by_ref().count();
-
-        assert_eq!(fditer.next(), None);
-    }
-}

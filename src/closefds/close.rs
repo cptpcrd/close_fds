@@ -1,40 +1,13 @@
-/// Close all open file descriptors starting at `minfd`, except for the file descriptors in
-/// `keep_fds`.
-///
-/// # Safety
-///
-/// This function is NOT safe to use if other threads are interacting with files, networking, or
-/// anything else that could possibly involve file descriptors in any way, shape, or form. (Note: On
-/// some systems, file descriptor use may be more common than you think! For example, on Linux with
-/// musl libc, `std::fs::canonicalize()` will open a file descriptor to the given path.)
-///
-/// In addition, some objects, such as `std::fs::File`, may open file descriptors and then assume
-/// that they will remain open. This function, by closing those file descriptors, violates those
-/// assumptions.
-///
-/// This function is safe to use if it can be verified that these are not concerns. For example, it
-/// *should* be safe at startup or just before an `exec()`. At all other times, exercise extreme
-/// caution when using this function, as it may lead to race conditions and/or security issues.
-///
-/// (Note: The above warnings, by definition, make it unsafe to call this function concurrently from
-/// multiple threads. As a result, this function may perform other non-thread-safe operations.)
-///
-/// # Efficiency
-///
-/// ## Efficiency of using `keep_fds`
-///
-/// If you're going to be passing more than a few file descriptors in `keep_fds`, or if the file
-/// descriptors that you pass are high-numbered (i.e. 50 or 100), sort the slice first. This will
-/// give you significant performance improvements (especially on Linux 5.9+).
-///
-/// `close_fds` can't just copy the slice and sort it for you because allocating memory is not
-/// async-signal-safe (see ["Async-signal-safety"](./index.html#async-signal-safety)).
-pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int]) {
-    if minfd < 0 {
-        minfd = 0;
-    }
-
-    let (max_keep_fd, fds_sorted) = crate::util::inspect_keep_fds(keep_fds);
+pub(crate) unsafe fn close_fds(
+    mut minfd: libc::c_int,
+    keep_fds: super::KeepFds,
+    mut itbuilder: crate::FdIterBuilder,
+) {
+    let super::KeepFds {
+        max: max_keep_fd,
+        fds: mut keep_fds,
+        sorted: fds_sorted,
+    } = keep_fds;
 
     keep_fds = crate::util::simplify_keep_fds(keep_fds, fds_sorted, &mut minfd);
 
@@ -44,20 +17,19 @@ pub unsafe fn close_open_fds(mut minfd: libc::c_int, mut keep_fds: &[libc::c_int
         return;
     }
 
-    let mut fditer = crate::fditer::iter_fds(
-        minfd,
-        // Include "possible" file descriptors
-        true,
-        // On these systems, tell iter_fds() to prefer speed over accuracy when determining maxfd
-        // (if it has to use a maxfd loop) -- these systems have a working closefrom(), so we can
-        // just call that once we pass the end of keep_fds.
-        cfg!(any(
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd",
-            target_os = "dragonfly"
-        )),
-    );
+    itbuilder.possible(true);
+
+    // On systems with closefrom(), skip the "nfds" method when determining maxfd -- these systems
+    // have a working closefrom(), so we can just call that once we pass the end of keep_fds.
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "dragonfly",
+    ))]
+    itbuilder.threadsafe(true);
+
+    let mut fditer = itbuilder.iter_from(minfd);
 
     // We have to use a while loop so we can drop() the iterator in the closefrom() case
     #[allow(clippy::while_let_on_iterator)]
