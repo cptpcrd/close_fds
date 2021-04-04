@@ -16,8 +16,8 @@ mod dirfd;
 ///
 /// # Warnings
 ///
-/// **TL;DR**: Don't use this function in multithreaded programs unless you know what you're doing,
-/// and avoid opening/closing file descriptors while consuming this iterator.
+/// **TL;DR**: Don't use `FdIter`/`FdIterBuilder` in multithreaded programs unless you know what
+/// you're doing, and avoid opening/closing file descriptors while consuming an `FdIter`.
 ///
 /// 1. File descriptors that are opened *during* iteration may or may not be included in the results
 ///    (exact behavior is platform-specific and depends on several factors).
@@ -29,16 +29,14 @@ mod dirfd;
 ///
 /// 3. *Closing* file descriptors during iteration (in the same thread or in another thread) will
 ///    not affect the iterator's ability to list other open file descriptors (if it does, that is a
-///    bug). However, in most cases you should use [`close_open_fds()`] to do this.
+///    bug). However, in most cases you should use
+///    [`CloseFdsBuilder`](./struct.CloseFdsBuilder.html) to do this.
 ///
 /// 4. Some of the file descriptors yielded by this iterator may be in active use by other sections
 ///    of code. Be very careful about which operations you perform on them.
 ///
 ///    If your program is multi-threaded, this is especially true, since a file descriptor returned
 ///    by this iterator may have been closed by the time your code tries to do something with it.
-///
-/// [`close_open_fds()`]: ./fn.close_open_fds.html
-/// [`iter_open_fds_threadsafe()`]: ./fn.iter_open_fds_threadsafe.html
 #[derive(Clone, Debug)]
 pub struct FdIterBuilder {
     possible: bool,
@@ -79,8 +77,8 @@ impl FdIterBuilder {
         }
     }
 
-    /// Set whether this function is allowed to yield invalid file descriptors for efficiency
-    /// (default is `false`).
+    /// Set whether the returned `FdIter` is allowed to yield invalid file descriptors for
+    /// efficiency (default is `false`).
     ///
     /// If this flag is set, the caller is responsible for checking if the returned file descriptors
     /// are valid.
@@ -115,7 +113,7 @@ impl FdIterBuilder {
         self
     }
 
-    /// Set whether this thread is allowed to look at special files for speedups (default is
+    /// Set whether returned `FdIter` is allowed to look at special files for speedups (default is
     /// `true`).
     ///
     /// On some systems, `/dev/fd` and/or `/proc/self/fd` provide an accurate view of the file
