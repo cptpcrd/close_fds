@@ -51,6 +51,7 @@ extern "C" {
 
 #[cfg(target_os = "netbsd")]
 extern "C" {
+    #[link_name = "__getdents30"]
     pub fn getdents(
         fildes: libc::c_int,
         buf: *mut libc::c_char,
