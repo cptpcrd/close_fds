@@ -52,7 +52,6 @@ impl<'a> CloseFdsBuilder<'a> {
         self
     }
 
-
     /// Set whether [`Self::cloexecfrom()`] needs to behave reliably in multithreaded programs
     /// (default is `false`).
     ///
