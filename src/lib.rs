@@ -14,7 +14,8 @@
 //! - Writing set-UID programs (which may not be able to fully trust their environment; for
 //!   example, `sudo` closes all open file descriptors when it starts as a security measure)
 //! - Spawning processes while interacting with FFI code that *doesn't* set the close-on-exec flag
-//!   on file descriptors it opens
+//!   on file descriptors it opens (the functionality offered by this crate is the ONLY way to
+//!   safely do this)
 //! - On some platforms (notably, macOS/iOS), Rust isn't always able to set the close-on-exec flag
 //!   *atomically*, which creates race conditions if one thread is e.g. opening sockets while
 //!   another thread is spawning processes. This crate may be useful in helping to avoid those

@@ -180,9 +180,7 @@ pub fn set_fds_cloexec(minfd: libc::c_int, keep_fds: &[libc::c_int]) {
 /// This is equivalent to
 /// `CloseFdsBuilder::new().keep_fds(keep_fds).threadsafe(true).cloexecfrom(minfd)`.
 ///
-/// See [`CloseFdsBuilder::cloexecfrom()`] and
-/// [`FdIterBuilder::threadsafe()`](./struct.FdIterBuilder.html#method.threadsafe`] for more
-/// information.
+/// See [`CloseFdsBuilder::cloexecfrom()`] and [`FdIterBuilder::threadsafe()`] for more information.
 #[inline]
 pub fn set_fds_cloexec_threadsafe(minfd: libc::c_int, keep_fds: &[libc::c_int]) {
     CloseFdsBuilder::new()

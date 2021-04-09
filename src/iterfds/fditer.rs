@@ -2,15 +2,12 @@ use super::*;
 
 /// An iterator over the current process's file descriptors.
 ///
-/// This can be created with one of the "iter" functions, such as:
+/// The recommended way to create an `FdIter` is with [`FdIterBuilder`]; however, the "iter"
+/// functions (such as [`iter_open_fds()`]) can also be used.
 ///
-/// - [`iter_open_fds()`](./fn.iter_open_fds.html)
-/// - [`iter_possible_fds()`](./fn.iter_possible_fds.html)
-/// - [`iter_open_fds_threadsafe()`](./fn.iter_open_fds_threadsafe.html)
-/// - [`iter_possible_fds_threadsafe()`](./fn.iter_possible_fds_threadsafe.html)
-///
-/// If this iterator is created with one of the "possible" functions, then it may yield invalid
-/// file descriptors. This can be checked with [`is_possible_iter()`](#method.is_possible_iter).
+/// If this iterator is created with [`FdIterBuilder::possible()`] set, or with one of the
+/// "possible" functions, then it may yield invalid file descriptors. This can be checked with
+/// [`Self::is_possible_iter()`].
 pub struct FdIter {
     #[cfg(any(
         target_os = "linux",

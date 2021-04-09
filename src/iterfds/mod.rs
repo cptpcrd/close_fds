@@ -12,7 +12,7 @@ pub use fditer::FdIter;
 ))]
 mod dirfd;
 
-/// A "builder" to construct an `FdIter` with custom parameters.
+/// A "builder" to construct an [`FdIter`] with custom parameters.
 ///
 /// # Warnings
 ///
