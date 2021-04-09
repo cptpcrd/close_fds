@@ -37,15 +37,7 @@ The first argument to `close_open_fds()` is the lowest file descriptor that shou
 
 `close_open_fds()` *always* succeeds. If one method of closing the file descriptors fails, it will fall back on another.
 
-Some other helpful functions in this crate (more details in the [documentation](http://docs.rs/close_fds/latest)):
-
-- `set_fds_cloexec(minfd, keep_fds)`: Identical to `close_open_fds()`, but sets the `FD_CLOEXEC` flag on the file descriptors instead of closing them.
-- `iter_open_fds(minfd)`: Iterates over all open file descriptors for the current process, starting at `minfd`.
-- `iter_possible_fds(minfd)` (not recommended): Identical to `iter_open_fds()`, but may yield invalid file descriptors; the caller is responsible for checking whether they are valid.
-
-In addition, there are "thread-safe" versions of these three functions that behave more reliably in multithreaded programs (at the cost of increased performance on some platforms). See the documentation for more details.
-
-Note that `close_open_fds()` should be preferred whenever possible, as it may be able to take advantage of platform-specific optimizations that these other functions cannot.
+More details, along with other helpful functions, can be found in the [documentation](http://docs.rs/close_fds/latest).
 
 ## OS support
 
@@ -70,7 +62,7 @@ Note that `close_open_fds()` should be preferred whenever possible, as it may be
 
 ## OS-specific notes
 
-Here is a list of the methods that `iter_open_fds()`, `iter_possible_fds()`, `close_open_fds()`, and `set_fds_cloexec()` will try on various platforms to improve performance when listing the open file descriptors:
+Here is a list of the methods that the this crate will try on various platforms to improve performance when listing the open file descriptors:
 
 - Linux
     - `/proc/self/fd` if `/proc` is mounted (very efficient)
@@ -78,16 +70,16 @@ Here is a list of the methods that `iter_open_fds()`, `iter_possible_fds()`, `cl
     - `/dev/fd` (very efficient)
 - FreeBSD
     - `/dev/fd` if an [`fdescfs`](https://www.freebsd.org/cgi/man.cgi?query=fdescfs) appears to be mounted there (very efficient)
-    - The `kern.proc.nfds` sysctl to get the number of open file descriptors (moderately efficient unless large numbers of file descriptors are open; not used by `close_open_fds()` or by the "thread-safe" functions)
+    - The `kern.proc.nfds` sysctl to get the number of open file descriptors (moderately efficient unless large numbers of file descriptors are open; not used by the "thread-safe" functions or when closing file descriptors)
 - OpenBSD
-    - `getdtablecount()` to get the number of open file descriptors (moderately efficient unless large numbers of file descriptors are open; not used by `close_open_fds()` or by the "thread-safe" functions)
+    - `getdtablecount()` to get the number of open file descriptors (moderately efficient unless large numbers of file descriptors are open; not used by the "thread-safe" functions or when closing file descriptors)
 - NetBSD
     - `/proc/self/fd` if `/proc` is mounted (very efficient)
     - `fcntl(0, F_MAXFD)` to get the maximum open file descriptor (moderately efficient)
 - Solaris and Illumos
     - `/dev/fd` or `/proc/self/fd` if either is available (very efficient)
 
-In certain circumstances, `close_open_fds()` may also call `closefrom()` on the BSDs and/or `close_range()` on Linux 5.9+/FreeBSD 12.2+, both of which are very efficient.
+When closing file descriptors, or setting the close-on-exec flag, this crate may also call `closefrom()` on the BSDs and/or `close_range()` on Linux 5.9+/FreeBSD 12.2+, both of which are very efficient.
 
 If none of the methods listed above are available, it will fall back on a simple loop through every possible file descriptor number -- from `minfd` to `sysconf(_SC_OPEN_MAX)`. This is slow, but it will always work.
 
