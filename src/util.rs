@@ -84,9 +84,9 @@ pub fn is_wsl_1() -> bool {
     // 0=Not running on WSL 1
     // 1=Running on WSL 1
     // >1=Uninitialized
-    static mut IS_WSL1: AtomicU8 = AtomicU8::new(2);
+    static IS_WSL1: AtomicU8 = AtomicU8::new(2);
 
-    match unsafe { IS_WSL1.load(Ordering::Relaxed) } {
+    match IS_WSL1.load(Ordering::Relaxed) {
         // Already initialized; return the result
         1 => true,
         0 => false,
@@ -117,9 +117,7 @@ pub fn is_wsl_1() -> bool {
             let is_wsl1 = uname_release.ends_with(b"Microsoft");
 
             // Store the result
-            unsafe {
-                IS_WSL1.store(is_wsl1 as u8, Ordering::Relaxed);
-            }
+            IS_WSL1.store(is_wsl1 as u8, Ordering::Relaxed);
 
             is_wsl1
         }

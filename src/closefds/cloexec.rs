@@ -4,7 +4,7 @@ use crate::util;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(target_os = "linux")]
-static mut MAY_HAVE_CLOSE_RANGE_CLOEXEC: AtomicBool = AtomicBool::new(true);
+static MAY_HAVE_CLOSE_RANGE_CLOEXEC: AtomicBool = AtomicBool::new(true);
 
 #[cfg(target_os = "linux")]
 #[inline]
@@ -22,9 +22,7 @@ fn set_cloexec_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<(), ()>
     {
         Ok(())
     } else {
-        unsafe {
-            MAY_HAVE_CLOSE_RANGE_CLOEXEC.store(false, Ordering::Relaxed);
-        }
+        MAY_HAVE_CLOSE_RANGE_CLOEXEC.store(false, Ordering::Relaxed);
         Err(())
     }
 }
@@ -37,7 +35,7 @@ fn set_cloexec_shortcut(
     max_keep_fd: libc::c_int,
     fds_sorted: bool,
 ) -> Result<(), ()> {
-    if !unsafe { MAY_HAVE_CLOSE_RANGE_CLOEXEC.load(Ordering::Relaxed) } {
+    if !MAY_HAVE_CLOSE_RANGE_CLOEXEC.load(Ordering::Relaxed) {
         Err(())
     } else if max_keep_fd < minfd {
         set_cloexec_range(minfd as libc::c_uint, libc::c_uint::MAX)
@@ -76,7 +74,7 @@ pub(crate) fn set_fds_cloexec(
             // keep_fds.
 
             #[cfg(target_os = "linux")]
-            if unsafe { MAY_HAVE_CLOSE_RANGE_CLOEXEC.load(Ordering::Relaxed) }
+            if MAY_HAVE_CLOSE_RANGE_CLOEXEC.load(Ordering::Relaxed)
                 && set_cloexec_range(fd as libc::c_uint, libc::c_uint::MAX).is_ok()
             {
                 return;

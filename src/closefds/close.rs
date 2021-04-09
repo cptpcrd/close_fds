@@ -124,9 +124,9 @@ fn check_has_close_range() -> Result<(), ()> {
     use core::sync::atomic::{AtomicU8, Ordering};
 
     // 0=present, 1=absent, other values=uninitialized
-    static mut HAS_CLOSE_RANGE: AtomicU8 = AtomicU8::new(2);
+    static HAS_CLOSE_RANGE: AtomicU8 = AtomicU8::new(2);
 
-    match unsafe { HAS_CLOSE_RANGE.load(Ordering::Relaxed) } {
+    match HAS_CLOSE_RANGE.load(Ordering::Relaxed) {
         // We know it's present
         1 => Ok(()),
         // We know it *isn't* present
@@ -155,14 +155,10 @@ fn check_has_close_range() -> Result<(), ()> {
                 // Either:
                 // - sysctl() failed somehow (???); assume close_range() is not present
                 // - The kernel is too old and it doesn't support close_range()
-                unsafe {
-                    HAS_CLOSE_RANGE.store(0, Ordering::Relaxed);
-                }
+                HAS_CLOSE_RANGE.store(0, Ordering::Relaxed);
                 Err(())
             } else {
-                unsafe {
-                    HAS_CLOSE_RANGE.store(1, Ordering::Relaxed);
-                }
+                HAS_CLOSE_RANGE.store(1, Ordering::Relaxed);
                 Ok(())
             }
         }
