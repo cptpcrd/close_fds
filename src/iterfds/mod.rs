@@ -385,6 +385,7 @@ mod tests {
                 .threadsafe(true)
                 .iter_from(0),
         );
+
         unsafe {
             close_files(&fds);
         }
@@ -393,7 +394,6 @@ mod tests {
     fn test_fused_generic(mut fditer: FdIter) {
         // Exhaust the iterator
         fditer.by_ref().count();
-
         assert_eq!(fditer.next(), None);
     }
 }

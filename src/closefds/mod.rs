@@ -19,6 +19,7 @@ impl<'a> CloseFdsBuilder<'a> {
             it: FdIterBuilder::new(),
         }
     }
+
     /// Leave the file descriptors listed in `keep_fds` alone; i.e. do not close them or set the
     /// close-on-exec flag on them.
     ///
