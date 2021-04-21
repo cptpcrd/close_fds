@@ -207,10 +207,7 @@ pub fn iter_open_fds_threadsafe(minfd: libc::c_int) -> FdIter {
 /// See [`FdIterBuilder::possible()`] for more information.
 #[inline]
 pub fn iter_possible_fds(minfd: libc::c_int) -> FdIter {
-    FdIterBuilder::new()
-        .possible(true)
-        .threadsafe(true)
-        .iter_from(minfd)
+    FdIterBuilder::new().possible(true).iter_from(minfd)
 }
 
 /// Identical to `iter_open_fds_threadsafe()`, but may -- for efficiency -- yield invalid file
