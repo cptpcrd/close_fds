@@ -1,5 +1,3 @@
-use super::*;
-
 /// An iterator over the current process's file descriptors.
 ///
 /// The recommended way to create an `FdIter` is with [`FdIterBuilder`]; however, the "iter"
@@ -18,7 +16,7 @@ pub struct FdIter {
         target_os = "solaris",
         target_os = "illumos",
     ))]
-    pub(crate) dirfd_iter: Option<dirfd::DirFdIter>,
+    pub(crate) dirfd_iter: Option<super::dirfd::DirFdIter>,
     pub(crate) curfd: libc::c_int,
     pub(crate) possible: bool,
     pub(crate) maxfd: libc::c_int,
