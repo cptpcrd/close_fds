@@ -1,30 +1,16 @@
-#[cfg(target_os = "freebsd")]
-pub const KERN_PROC_NFDS: libc::c_int = 43;
-
-#[cfg(any(target_os = "macos", target_os = "ios"))]
-pub const SYS_GETDIRENTRIES64: libc::c_int = 344;
-
 // This is the correct value for every architecture except alpha, which Rust doesn't support.
 #[cfg(target_os = "linux")]
 pub const SYS_CLOSE_RANGE: libc::c_long = 436;
-
 #[cfg(target_os = "linux")]
 pub const CLOSE_RANGE_CLOEXEC: libc::c_uint = 1 << 2;
 
 #[cfg(target_os = "freebsd")]
 pub const SYS_CLOSE_RANGE: libc::c_int = 575;
-
 #[cfg(target_os = "freebsd")]
-extern "C" {
-    pub fn closefrom(lowfd: libc::c_int);
+pub const KERN_PROC_NFDS: libc::c_int = 43;
 
-    pub fn getdirentries(
-        fd: libc::c_int,
-        buf: *mut libc::c_char,
-        nbytes: libc::size_t,
-        basep: *mut libc::off_t,
-    ) -> libc::ssize_t;
-}
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+pub const SYS_GETDIRENTRIES64: libc::c_int = 344;
 
 #[cfg(target_os = "freebsd")]
 #[repr(C)]
@@ -37,6 +23,18 @@ pub struct dirent {
     pub d_namlen: u16,
     d_pad1: u16,
     pub d_name: [libc::c_char; 256],
+}
+
+#[cfg(target_os = "freebsd")]
+extern "C" {
+    pub fn closefrom(lowfd: libc::c_int);
+
+    pub fn getdirentries(
+        fd: libc::c_int,
+        buf: *mut libc::c_char,
+        nbytes: libc::size_t,
+        basep: *mut libc::off_t,
+    ) -> libc::ssize_t;
 }
 
 #[cfg(target_os = "openbsd")]
