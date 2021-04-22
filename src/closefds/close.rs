@@ -1,3 +1,8 @@
+#[cfg(target_os = "linux")]
+use core::sync::atomic::{AtomicBool, Ordering};
+#[cfg(target_os = "freebsd")]
+use core::sync::atomic::{AtomicU8, Ordering};
+
 pub(crate) unsafe fn close_fds(
     mut minfd: libc::c_int,
     keep_fds: super::KeepFds,
@@ -55,7 +60,7 @@ pub(crate) unsafe fn close_fds(
                 } else {
                     // On Linux we can do the same thing with close_range() if it's available
                     #[cfg(target_os = "linux")]
-                    if MAY_HAVE_CLOSE_RANGE
+                    if MAY_HAVE_CLOSE_RANGE.load(Ordering::Relaxed)
                         && try_close_range(fd as libc::c_uint, libc::c_uint::MAX).is_ok()
                     {
                         // We can't close the directory file descriptor *first*, because
@@ -89,7 +94,7 @@ pub(crate) unsafe fn close_fds(
 }
 
 #[cfg(target_os = "linux")]
-static mut MAY_HAVE_CLOSE_RANGE: bool = true;
+static MAY_HAVE_CLOSE_RANGE: AtomicBool = AtomicBool::new(true);
 
 #[cfg(target_os = "linux")]
 unsafe fn try_close_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<(), ()> {
@@ -109,7 +114,7 @@ unsafe fn try_close_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<()
     {
         Ok(())
     } else {
-        MAY_HAVE_CLOSE_RANGE = false;
+        MAY_HAVE_CLOSE_RANGE.store(false, Ordering::Relaxed);
         Err(())
     }
 }
@@ -120,8 +125,6 @@ fn check_has_close_range() -> Result<(), ()> {
     // process being killed with SIGSYS. So before we try making a syscall(), we have to check if
     // the kernel is new enough. (We also have to cache the presence/absence differently because of
     // this).
-
-    use core::sync::atomic::{AtomicU8, Ordering};
 
     // 0=present, 1=absent, other values=uninitialized
     static HAS_CLOSE_RANGE: AtomicU8 = AtomicU8::new(2);
@@ -208,7 +211,7 @@ unsafe fn close_fds_shortcut(
     }
 
     #[cfg(target_os = "linux")]
-    if !MAY_HAVE_CLOSE_RANGE {
+    if !MAY_HAVE_CLOSE_RANGE.load(Ordering::Relaxed) {
         // If we know that close_range() definitely isn't available, there's nothing we can do.
         return Err(());
     } else if max_keep_fd < minfd {
