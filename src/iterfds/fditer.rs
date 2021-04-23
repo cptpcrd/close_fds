@@ -1,11 +1,12 @@
 /// An iterator over the current process's file descriptors.
 ///
-/// The recommended way to create an `FdIter` is with [`FdIterBuilder`]; however, the "iter"
-/// functions (such as [`iter_open_fds()`]) can also be used.
+/// The recommended way to create an `FdIter` is with
+/// [`FdIterBuilder`](./struct.FdIterBuilder.html); however, the "iter"
+/// functions (such as [`iter_open_fds()`](./fn.iter_open_fds.html)) can also be used.
 ///
-/// If this iterator is created with [`FdIterBuilder::possible()`] set, or with one of the
-/// "possible" functions, then it may yield invalid file descriptors. This can be checked with
-/// [`Self::is_possible_iter()`].
+/// If this iterator is created with [`FdIterBuilder::possible()`](./struct.FdIterBuilder.html)
+/// set, or with one of the "possible" functions, then it may yield invalid file descriptors. This
+/// can be checked with [`Self::is_possible_iter()`].
 pub struct FdIter {
     #[cfg(any(
         target_os = "linux",
