@@ -59,6 +59,16 @@
 //! cmd.status().unwrap();
 //! ```
 //!
+//! # Builders vs. helper functions
+//!
+//! [`close_open_fds()`], [`set_fds_cloexec()`], [`iter_open_fds()`], etc. provide simple ways to
+//! close, set the close-on-exec flag on, or iterate over all open file descriptors.
+//!
+//! However, for more advanced use cases, there are also "builders" ([`CloseFdsBuilder`],
+//! [`FdIterBuilder`]) which can be used to further customize aspects of the actions that will be
+//! taken. The documentation of each helper function describes how the same task could be performed
+//! using one of the builders.
+//!
 //! # Async-signal-safety
 //!
 //! ## Background
