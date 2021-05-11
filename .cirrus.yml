@@ -48,7 +48,7 @@ task:
       mkdir -p coverage-no-fdescfs
       for f in target/debug/deps/*; do
         if [ -x "$f" ]; then
-          kcov --exclude-pattern=/.cargo,/.rustup,/usr/lib --verify coverage-no-fdescfs "$f"
+          kcov --exclude-pattern=/.cargo,/.rustup,/usr/lib --include-path=$(pwd) --verify coverage-no-fdescfs "$f"
         fi
       done
   mount_fdescfs_script:
@@ -60,7 +60,7 @@ task:
       mkdir -p coverage-fdescfs
       for f in target/debug/deps/*; do
         if [ -x "$f" ]; then
-          kcov --exclude-pattern=/.cargo,/.rustup,/usr/lib --verify coverage-fdescfs "$f"
+          kcov --exclude-pattern=/.cargo,/.rustup,/usr/lib --include-path=$(pwd) --verify coverage-fdescfs "$f"
         fi
       done
   coverage_collect_upload_script:
