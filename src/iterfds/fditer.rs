@@ -254,6 +254,12 @@ impl Iterator for FdIter {
         }
 
         if let Some(maxfd) = self.maxfd {
+            if maxfd == -1 {
+                // No file descriptors open
+                return (0, Some(0));
+            }
+            debug_assert!(maxfd > 0);
+
             // maxfd is set; we can give an upper bound by comparing to curfd
             let diff = (maxfd as usize + 1).saturating_sub(self.curfd as usize);
 
