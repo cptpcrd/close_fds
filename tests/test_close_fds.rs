@@ -487,6 +487,7 @@ fn run_tests() {
     );
 }
 
+#[cfg(not(tarpaulin))] // Breaks when running under some versions of tarpaulin
 #[test]
 fn run_no_fds_tests() {
     // This is an edge case of the fused tests. The case where *no* file descriptors are open
@@ -497,11 +498,9 @@ fn run_no_fds_tests() {
     // since it only affects the subprocess.
 
     match unsafe { libc::fork() } {
-        0 => {
+        0 => unsafe {
             // Close all open file descriptors
-            unsafe {
-                close_fds::close_open_fds(0, &[]);
-            }
+            close_fds::close_open_fds(0, &[]);
 
             // (Note: From here on, panic()ing is of limited value since it can't display a
             // backtrace. So we exit() with different values on error, so that the error code will
@@ -512,33 +511,33 @@ fn run_no_fds_tests() {
 
             // It's empty.
             if fditer.next().is_some() {
-                std::process::exit(1);
+                libc::_exit(1);
             }
 
             // Now we open another file descriptor.
-            if unsafe { libc::open("/\0".as_ptr() as *const libc::c_char, libc::O_RDONLY) } < 0 {
-                std::process::exit(2);
+            if libc::open("/\0".as_ptr() as *const libc::c_char, libc::O_RDONLY) < 0 {
+                libc::_exit(2);
             }
             // A new FdIter knows about the new file descriptor...
             if close_fds::iter_open_fds(0).next() != Some(0) {
-                std::process::exit(3);
+                libc::_exit(3);
             }
 
             // But the old one doesn't, because it's fused.
             if fditer.next().is_some() {
-                std::process::exit(4);
+                libc::_exit(4);
             }
 
             // And it knows it.
             if fditer.size_hint() != (0, Some(0)) {
-                std::process::exit(5);
+                libc::_exit(5);
             }
             if fditer.count() != 0 {
-                std::process::exit(6);
+                libc::_exit(6);
             }
 
-            std::process::exit(0);
-        }
+            libc::_exit(0);
+        },
         ret if ret < 0 => panic!("Error fork()ing: {}", std::io::Error::last_os_error()),
         pid => unsafe {
             let mut stat = 0;
