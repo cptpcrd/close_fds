@@ -93,7 +93,6 @@ pub fn is_wsl_1() -> bool {
 
         _ => {
             let mut uname = unsafe { core::mem::zeroed() };
-
             unsafe {
                 libc::uname(&mut uname);
             }

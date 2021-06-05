@@ -89,7 +89,7 @@ impl<'a> CloseFdsBuilder<'a> {
             core::cmp::max(minfd, 0),
             self.keep_fds.clone(),
             self.it.clone(),
-        )
+        );
     }
 
     /// Close all of the file descriptors starting at `minfd` and not excluded by
@@ -120,7 +120,7 @@ impl<'a> CloseFdsBuilder<'a> {
             core::cmp::max(minfd, 0),
             self.keep_fds.clone(),
             self.it.clone(),
-        )
+        );
     }
 }
 
