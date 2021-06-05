@@ -150,7 +150,7 @@ impl FdIterBuilder {
         FdIter {
             curfd: minfd,
             possible: self.possible,
-            maxfd: -1,
+            maxfd: None,
             #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
             skip_nfds: self.skip_nfds,
             #[cfg(any(

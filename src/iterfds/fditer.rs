@@ -20,7 +20,7 @@ pub struct FdIter {
     pub(crate) dirfd_iter: Option<super::dirfd::DirFdIter>,
     pub(crate) curfd: libc::c_int,
     pub(crate) possible: bool,
-    pub(crate) maxfd: libc::c_int,
+    pub(crate) maxfd: Option<libc::c_int>,
     /// If this is true, it essentially means "don't try the 'nfds' methods of finding the maximum
     /// open file descriptor."
     /// `close_open_fds()` passes this as true on some systems becaus the system has a working
@@ -32,7 +32,8 @@ pub struct FdIter {
 
 impl FdIter {
     fn get_maxfd_direct(&self) -> libc::c_int {
-        // Note: This function must NEVER return a negative value. NEVER.
+        // This function can return -1 if no file descriptors are open. Otherwise it should return
+        // a nonnegative integer indicating the maximum file descriptor that might be open.
 
         #[cfg(target_os = "netbsd")]
         unsafe {
@@ -43,12 +44,10 @@ impl FdIter {
 
             if maxfd >= 0 {
                 return maxfd;
-            } else if *libc::__errno() == 0 {
+            } else if maxfd == -1 && *libc::__errno() == 0 {
                 // fcntl(F_MAXFD) actually succeeded and returned -1, which means that no file
                 // descriptors are open.
-                // We can't return -1 because that's the special value used to signify that maxfd is
-                // unknown, but returning 0 will get us close.
-                return 0;
+                return -1;
             }
         }
 
@@ -110,9 +109,7 @@ impl FdIter {
 
         if nfds == 0 {
             // No open file descriptors -- nothing to do!
-            // We can't return -1 because that's the special value used to signify that maxfd is
-            // unknown, but returning 0 will get us close.
-            return Some(0);
+            return Some(-1);
         } else if nfds < 0 {
             // Probably failure of the underlying function
             return None;
@@ -166,20 +163,15 @@ impl FdIter {
 
     #[inline]
     fn get_maxfd(&mut self) -> libc::c_int {
-        if self.maxfd < 0 {
-            self.maxfd = self.get_maxfd_direct();
-
-            // Why is this here? Well, if get_maxfd_direct() ever returns a value < 0, future calls
-            // to get_maxfd() would cause self.maxfd to be recomputed.
-            //
-            // This would violate the guarantee that FdIter is fused, since that guarantee is based
-            // on the assumption that self.maxfd will NEVER CHANGE once it has been determined. It
-            // would also cause incorrect behavior from methods such as size_hint() and count(),
-            // which make similar assumptions about self.maxfd.
-            debug_assert!(self.maxfd >= 0);
+        match self.maxfd {
+            Some(maxfd) => maxfd,
+            None => {
+                let maxfd = self.get_maxfd_direct();
+                debug_assert!(maxfd >= -1);
+                self.maxfd = Some(maxfd);
+                maxfd
+            }
         }
-
-        self.maxfd
     }
 
     /// Returns whether this iterator was created with one of the "possible" iteration functions,
@@ -261,9 +253,9 @@ impl Iterator for FdIter {
             return dfd_iter.size_hint();
         }
 
-        if self.maxfd >= 0 {
+        if let Some(maxfd) = self.maxfd {
             // maxfd is set; we can give an upper bound by comparing to curfd
-            let diff = (self.maxfd as usize + 1).saturating_sub(self.curfd as usize);
+            let diff = (maxfd as usize + 1).saturating_sub(self.curfd as usize);
 
             // If we were given the "possible" flag, then this is also the lower limit.
             (if self.possible { diff } else { 0 }, Some(diff))
