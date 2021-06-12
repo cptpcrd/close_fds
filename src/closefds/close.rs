@@ -37,9 +37,7 @@ pub(crate) unsafe fn close_fds(
     let mut fditer = itbuilder.iter_from(minfd);
 
     // We have to use a while loop so we can drop() the iterator in the closefrom() case
-    #[allow(clippy::while_let_on_iterator)]
     while let Some(fd) = fditer.next() {
-        #[allow(clippy::if_same_then_else)]
         if fd > max_keep_fd {
             // If fd > max_keep_fd, we know that none of the file descriptors we encounter from
             // here onward can be in keep_fds.
@@ -138,15 +136,13 @@ fn check_has_close_range() -> Result<(), ()> {
         // Check if it's present
         // Here, we check the `kern.osreldate` sysctl
         _ => {
-            const OSRELDATE_MIB: [libc::c_int; 2] = [libc::CTL_KERN, libc::KERN_OSRELDATE];
-
             let mut osreldate = 0;
             let mut oldlen = core::mem::size_of::<libc::c_int>();
 
             if unsafe {
                 libc::sysctl(
-                    OSRELDATE_MIB.as_ptr(),
-                    OSRELDATE_MIB.len() as _,
+                    [libc::CTL_KERN, libc::KERN_OSRELDATE].as_ptr(),
+                    2,
                     &mut osreldate as *mut _ as *mut _,
                     &mut oldlen,
                     core::ptr::null(),
