@@ -68,11 +68,15 @@ pub(crate) fn set_fds_cloexec(
 
     itbuilder.possible(true);
 
-    for fd in itbuilder.iter_from(minfd) {
+    let mut fditer = itbuilder.iter_from(minfd);
+
+    while let Some(fd) = fditer.next() {
         if fd > max_keep_fd {
             // We know that none of the file descriptors we encounter from here onward can be in
             // keep_fds.
 
+            // On Linux, we may be able to use close_range() with the CLOSE_RANGE_CLOEXEC flag to
+            // set them as close-on-exec directly
             #[cfg(target_os = "linux")]
             if MAY_HAVE_CLOSE_RANGE_CLOEXEC.load(Ordering::Relaxed)
                 && set_cloexec_range(fd as libc::c_uint, libc::c_uint::MAX).is_ok()
@@ -82,6 +86,14 @@ pub(crate) fn set_fds_cloexec(
 
             // Otherwise, this just lets us skip calling check_should_keep()
             util::set_cloexec(fd);
+
+            // We also know that none of the remaining file descriptors are in keep_fds, so
+            // we can just iterate through and set all of them as close-on-exec directly
+            for fd in fditer {
+                debug_assert!(fd > max_keep_fd);
+                util::set_cloexec(fd);
+            }
+            return;
         } else if !util::check_should_keep(&mut keep_fds, fd, fds_sorted) {
             // It's not in keep_fds
             util::set_cloexec(fd);
