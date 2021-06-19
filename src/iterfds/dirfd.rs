@@ -110,27 +110,32 @@ impl DirFdIter {
             // However, it can also be a fdescfs filesystem, in which case it's correct.
             // So we only trust /dev/fd if it's on a different device than /dev.
 
-            let dev_path_ptr = "/dev\0".as_ptr() as *const libc::c_char;
-            let devfd_path_ptr = "/dev/fd\0".as_ptr() as *const libc::c_char;
-
             let mut dev_stat = core::mem::MaybeUninit::uninit();
             let mut devfd_stat = core::mem::MaybeUninit::uninit();
 
             unsafe {
-                if libc::stat(dev_path_ptr, dev_stat.as_mut_ptr()) == 0
-                    && libc::stat(devfd_path_ptr, devfd_stat.as_mut_ptr()) == 0
-                    && dev_stat.assume_init().st_dev != devfd_stat.assume_init().st_dev
+                let dirfd = libc::open(
+                    "/dev/fd\0".as_ptr() as *const _,
+                    libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
+                );
+
+                if dirfd >= 0
+                    && (libc::stat("/dev\0".as_ptr() as *const _, dev_stat.as_mut_ptr()) != 0
+                        || libc::fstat(dirfd, devfd_stat.as_mut_ptr()) != 0
+                        || dev_stat.assume_init().st_dev == devfd_stat.assume_init().st_dev)
                 {
-                    // /dev and /dev/fd are on different devices; /dev/fd is probably an fdescfs
-
-                    libc::open(
-                        devfd_path_ptr,
-                        libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
-                    )
-                } else {
-                    // /dev/fd is probably a static directory
-
+                    // We were able to open /dev/fd. However, one of the following happened:
+                    // 1. We weren't able to stat() /dev.
+                    // 2. We weren't able to fstat() dirfd (which is open to /dev/fd).
+                    // 3. /dev's device number is the same as /dev/fd's device number.
+                    //
+                    // Case (3) means that /dev/fd is almost definitely NOT an fdescfs, so we can't
+                    // trust it. Cases (1) and (2) mean that we can't tell, so we must
+                    // conservatively assume that it isn't an fdescfs.
+                    libc::close(dirfd);
                     -1
+                } else {
+                    dirfd
                 }
             }
         };
