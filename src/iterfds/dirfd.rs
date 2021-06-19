@@ -200,38 +200,13 @@ impl DirFdIter {
         #[allow(clippy::cast_ptr_alignment)] // We trust the kernel not to make us segfault
         let entry = &*(self.dirent_buf.data.as_ptr().add(offset) as *const RawDirent);
 
-        cfg_if::cfg_if! {
-            if #[cfg(any(
-                target_os = "freebsd",
-                target_os = "netbsd",
-                target_os = "macos",
-                target_os = "ios",
-            ))] {
-                // Trailing NUL
-                debug_assert_eq!(entry.d_name[entry.d_namlen as usize], 0);
-                // No NULs before that
-                debug_assert_eq!(
-                    entry.d_name[..entry.d_namlen as usize]
-                        .iter()
-                        .position(|&c| c == 0),
-                    None
-                );
-
-                let fd = parse_int_bytes(
-                    entry.d_name[..entry.d_namlen as usize]
-                        .iter()
-                        .map(|c| *c as u8),
-                );
-            } else {
-                let fd = parse_int_bytes(
-                    entry
-                        .d_name
-                        .iter()
-                        .take_while(|c| **c != 0)
-                        .map(|c| *c as u8),
-                );
-            }
-        }
+        let fd = parse_int_bytes(
+            entry
+                .d_name
+                .iter()
+                .take_while(|c| **c != 0)
+                .map(|c| *c as u8),
+        );
 
         (fd, entry.d_reclen as usize)
     }
