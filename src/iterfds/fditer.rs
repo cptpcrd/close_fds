@@ -51,11 +51,28 @@ impl FdIter {
             }
         }
 
-        #[cfg(target_os = "freebsd")]
+        #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
         if !self.skip_nfds {
-            // On FreeBSD, we can get the *number* of open file descriptors. From that, we can use
-            // an is_fd_valid() loop to get the maximum open file descriptor.
+            // On FreeBSD and OpenBSD, we can get the *number* of open file descriptors. From that,
+            // we can use an is_fd_valid() loop to get the maximum open file descriptor.
+            if let Some(maxfd) = Self::get_nfds().and_then(Self::nfds_to_maxfd) {
+                return maxfd;
+            }
+        }
 
+        let fdlimit = unsafe { libc::sysconf(libc::_SC_OPEN_MAX) };
+
+        // Clamp it at 65536 because that's a LOT of file descriptors
+        // Also don't trust values below 1024
+
+        fdlimit.max(1024).min(65536) as libc::c_int - 1
+    }
+
+    #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
+    #[inline]
+    fn get_nfds() -> Option<libc::c_int> {
+        #[cfg(target_os = "freebsd")]
+        return {
             let mib = [
                 libc::CTL_KERN,
                 libc::KERN_PROC,
@@ -76,29 +93,14 @@ impl FdIter {
                 )
             } == 0
             {
-                if let Some(maxfd) = Self::nfds_to_maxfd(nfds) {
-                    return maxfd;
-                }
+                Some(nfds)
+            } else {
+                None
             }
-        }
+        };
 
         #[cfg(target_os = "openbsd")]
-        if !self.skip_nfds {
-            // On OpenBSD, we have a similar situation as with FreeBSD -- we can get the *number*
-            // of open file descriptors, and perhaps work from that to get the maximum open file
-            // descriptor.
-
-            if let Some(maxfd) = Self::nfds_to_maxfd(unsafe { crate::sys::getdtablecount() }) {
-                return maxfd;
-            }
-        }
-
-        let fdlimit = unsafe { libc::sysconf(libc::_SC_OPEN_MAX) };
-
-        // Clamp it at 65536 because that's a LOT of file descriptors
-        // Also don't trust values below 1024
-
-        fdlimit.max(1024).min(65536) as libc::c_int - 1
+        return Some(unsafe { crate::sys::getdtablecount() });
     }
 
     #[cfg(any(target_os = "freebsd", target_os = "openbsd"))]
