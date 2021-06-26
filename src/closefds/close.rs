@@ -36,57 +36,52 @@ pub(crate) unsafe fn close_fds(
 
     let mut fditer = itbuilder.iter_from(minfd);
 
-    // We have to use a while loop so we can drop() the iterator in the closefrom() case
+    // We have to use a while loop so we can pass the iterator to close_rest()
     while let Some(fd) = fditer.next() {
         if fd > max_keep_fd {
             // If fd > max_keep_fd, we know that none of the file descriptors we encounter from
             // here onward can be in keep_fds.
-
-            cfg_if::cfg_if! {
-                if #[cfg(any(
-                    target_os = "freebsd",
-                    target_os = "netbsd",
-                    target_os = "openbsd",
-                    target_os = "dragonfly",
-                ))] {
-                    // On the BSDs we can use closefrom() to close the rest
-
-                    // Close the directory file descriptor (if one is being used) first
-                    drop(fditer);
-                    crate::sys::closefrom(fd);
-                    return;
-                } else {
-                    // On Linux we can do the same thing with close_range() if it's available
-                    #[cfg(target_os = "linux")]
-                    if MAY_HAVE_CLOSE_RANGE.load(Ordering::Relaxed)
-                        && try_close_range(fd as libc::c_uint, libc::c_uint::MAX).is_ok()
-                    {
-                        // We can't close the directory file descriptor *first*, because
-                        // close_range() might not be available. So there's a slight race condition
-                        // here where the call to close() might accidentally close another file
-                        // descriptor.
-                        // Then again, this function is documented as being unsafe if other threads
-                        // are interacting with file descriptors.
-
-                        drop(fditer);
-                        return;
-                    }
-
-                    // On other systems, this just allows us to skip the contains() check
-                    libc::close(fd);
-
-                    // We also know that none of the remaining file descriptors are in keep_fds, so
-                    // we can just iterate through and close all of them directly
-                    for fd in fditer {
-                        debug_assert!(fd > max_keep_fd);
-                        libc::close(fd);
-                    }
-                    return;
-                }
-            }
+            close_rest(fd, fditer);
+            return;
         } else if !crate::util::check_should_keep(&mut keep_fds, fd, fds_sorted) {
             // Close it if it's not in keep_fds
             libc::close(fd);
+        }
+    }
+}
+
+unsafe fn close_rest(fd: libc::c_int, fditer: crate::FdIter) {
+    cfg_if::cfg_if! {
+        if #[cfg(any(
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd",
+            target_os = "dragonfly",
+        ))] {
+            // On the BSDs we can use closefrom() to close the rest
+            // Close the directory file descriptor (if one is being used) first
+            drop(fditer);
+            crate::sys::closefrom(fd);
+        } else {
+            // On Linux we can do the same thing with close_range() if it's available
+            #[cfg(target_os = "linux")]
+            if MAY_HAVE_CLOSE_RANGE.load(Ordering::Relaxed)
+                && try_close_range(fd as libc::c_uint, libc::c_uint::MAX).is_ok()
+            {
+                // We can't close the directory file descriptor *first*, because close_range()
+                // might not be available. So there's a slight race condition here where the call
+                // to close() might accidentally close another file descriptor.
+                // Then again, this is documented as being unsafe if other threads are interacting
+                // with file descriptors.
+                drop(fditer);
+                return;
+            }
+
+            // No closefrom() or close_range(); fall back on looping through and closing manually
+            libc::close(fd);
+            for fd in fditer {
+                libc::close(fd);
+            }
         }
     }
 }
