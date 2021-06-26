@@ -1,8 +1,8 @@
 pub fn inspect_keep_fds(keep_fds: &[libc::c_int]) -> (libc::c_int, bool) {
     // Get the maximum file descriptor from the list, and also check if it's sorted.
 
-    let mut max_keep_fd = -1;
-    let mut last_fd = -1;
+    let mut max_keep_fd = libc::c_int::MIN;
+    let mut last_fd = libc::c_int::MIN;
     let mut fds_sorted = true;
 
     for fd in keep_fds.iter().cloned() {
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn test_inspect_keep_fds() {
-        assert_eq!(inspect_keep_fds(&[]), (-1, true));
+        assert_eq!(inspect_keep_fds(&[]), (libc::c_int::MIN, true));
 
         assert_eq!(inspect_keep_fds(&[0]), (0, true));
         assert_eq!(inspect_keep_fds(&[0, 1]), (1, true));
@@ -198,6 +198,12 @@ mod tests {
 
         assert_eq!(inspect_keep_fds(&[0, 1, 2, 5, 7]), (7, true));
         assert_eq!(inspect_keep_fds(&[0, 1, 2, 7, 5]), (7, false));
+
+        assert_eq!(inspect_keep_fds(&[-1]), (-1, true));
+        assert_eq!(
+            inspect_keep_fds(&[libc::c_int::MIN]),
+            (libc::c_int::MIN, true)
+        );
     }
 
     #[test]
