@@ -30,7 +30,7 @@ impl<'a> CloseFdsBuilder<'a> {
     /// # Efficiency
     ///
     /// It is **highly** recommended to sort the `keep_fds` slice first (see also
-    /// [`Self::keep_fds_sorted()`]. This will give you significant performance improvements
+    /// [`Self::keep_fds_sorted()`]). This will give you significant performance improvements
     /// (especially on Linux 5.9+ and FreeBSD 12.2+).
     ///
     /// `close_fds` can't just copy the slice and sort it for you because allocating memory is not
