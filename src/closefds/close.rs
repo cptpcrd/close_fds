@@ -175,7 +175,7 @@ unsafe fn try_close_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<()
         crate::sys::SYS_CLOSE_RANGE,
         minfd as libc::c_uint,
         maxfd as libc::c_uint,
-        0,
+        0 as libc::c_uint,
     ) == 0
     {
         Ok(())
