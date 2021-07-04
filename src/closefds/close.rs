@@ -99,7 +99,7 @@ unsafe fn try_close_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<()
 
     #[allow(clippy::unnecessary_cast)]
     if libc::syscall(
-        crate::sys::SYS_CLOSE_RANGE,
+        libc::SYS_close_range,
         minfd as libc::c_uint,
         maxfd as libc::c_uint,
         0 as libc::c_uint,

@@ -1,6 +1,3 @@
-// This is the correct value for every architecture except alpha, which Rust doesn't support.
-#[cfg(target_os = "linux")]
-pub const SYS_CLOSE_RANGE: libc::c_long = 436;
 #[cfg(target_os = "linux")]
 pub const CLOSE_RANGE_CLOEXEC: libc::c_uint = 1 << 2;
 

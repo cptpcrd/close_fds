@@ -13,7 +13,7 @@ fn set_cloexec_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<(), ()>
 
     if unsafe {
         libc::syscall(
-            crate::sys::SYS_CLOSE_RANGE,
+            libc::SYS_close_range,
             minfd as libc::c_uint,
             maxfd as libc::c_uint,
             crate::sys::CLOSE_RANGE_CLOEXEC,
