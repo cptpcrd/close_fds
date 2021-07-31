@@ -56,8 +56,6 @@ pub struct FdIterBuilder {
 
 impl FdIterBuilder {
     /// Create a new builder.
-    ///
-    /// `minfd` specifies the number of the file descriptor at which iteration will begin.
     #[inline]
     pub fn new() -> Self {
         Self {
