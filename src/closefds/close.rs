@@ -119,7 +119,7 @@ fn check_has_close_range() -> Result<(), ()> {
     // the kernel is new enough. (We also have to cache the presence/absence differently because of
     // this).
 
-    // 0=present, 1=absent, other values=uninitialized
+    // 1=present, 0=absent, other values=uninitialized
     static HAS_CLOSE_RANGE: AtomicU8 = AtomicU8::new(2);
 
     match HAS_CLOSE_RANGE.load(Ordering::Relaxed) {
@@ -170,7 +170,7 @@ unsafe fn try_close_range(minfd: libc::c_uint, maxfd: libc::c_uint) -> Result<()
         crate::sys::SYS_CLOSE_RANGE,
         minfd as libc::c_uint,
         maxfd as libc::c_uint,
-        0 as libc::c_uint,
+        0 as libc::c_int,
     ) == 0
     {
         Ok(())
