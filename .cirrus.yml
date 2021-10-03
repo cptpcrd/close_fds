@@ -10,11 +10,8 @@ task:
         FREEBSD_VERSION: 12.2
         FREEBSD_IMAGE: freebsd-12-2
     - env:
-        FREEBSD_VERSION: 12.2 STABLE
-        FREEBSD_IMAGE: freebsd-12-2-snap
-    # - env:
-    #     FREEBSD_VERSION: 13.0
-    #     FREEBSD_IMAGE: freebsd-13-0-snap
+        FREEBSD_VERSION: 13.0
+        FREEBSD_IMAGE: freebsd-13-0
 
   matrix:
     - env:
