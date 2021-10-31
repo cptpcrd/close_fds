@@ -118,3 +118,37 @@ mod util;
 
 pub use closefds::*;
 pub use iterfds::*;
+
+/// Probe for the presence of kernel features that allow performance boosts.
+///
+/// This function probes the OS to e.g. determine if syscalls like `close_range(2)` are present,
+/// storing information on this for future use. It may be helpful to call this from the main process
+/// before launching any child processes which may call functions in `close_fds`, since this would
+/// allow the child processes to slightly optimize the syscalls they make.
+///
+/// Calling this function more than once will generally not re-probe (except perhaps when called
+/// from multiple threads). In addition, it is currently a no-op on all platforms except FreeBSD
+/// and Linux (though that may change).
+///
+/// Note that no benchmarks have been conducted, and the performance boost may turn out to be
+/// negligible.
+#[inline]
+pub fn probe_features() {
+    probe_features_imp();
+}
+
+#[cfg_attr(not(any(target_os = "linux", target_os = "freebsd")), inline)]
+fn probe_features_imp() {
+    if cfg!(any(target_os = "linux", target_os = "freebsd")) {
+        // To avoid unnecessary syscalls, do nothing if the function is called multiple times
+        use core::sync::atomic::{AtomicBool, Ordering};
+        static PROBED: AtomicBool = AtomicBool::new(false);
+        if PROBED.load(Ordering::Relaxed) {
+            return;
+        }
+        PROBED.store(true, Ordering::Relaxed);
+
+        closefds::probe();
+        iterfds::probe();
+    }
+}

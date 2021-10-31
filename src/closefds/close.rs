@@ -228,3 +228,25 @@ unsafe fn close_fds_shortcut(
     // We can't do any optimizations without calling iter_possible_fds()
     Err(())
 }
+
+#[inline]
+pub(crate) fn probe() {
+    #[cfg(target_os = "linux")]
+    unsafe {
+        // This call *should* fail with EINVAL (because first > last). If it succeeds (!), or
+        // if it fails with a different error, something's wrong.
+        if libc::syscall(
+            libc::SYS_close_range,
+            libc::c_uint::MAX,
+            libc::c_uint::MAX - 1,
+            0,
+        ) == 0
+            || *libc::__errno_location() != libc::EINVAL
+        {
+            MAY_HAVE_CLOSE_RANGE.store(false, Ordering::Relaxed);
+        }
+    }
+
+    #[cfg(target_os = "freebsd")]
+    let _ = check_has_close_range();
+}

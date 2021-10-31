@@ -222,6 +222,14 @@ pub fn iter_possible_fds_threadsafe(minfd: libc::c_int) -> FdIter {
         .iter_from(minfd)
 }
 
+#[inline]
+pub(crate) fn probe() {
+    // Check if we're on WSL 1 on Linux (since that prevents us from using /proc/self/fd)
+    // Otherwise, there's not much we can check in advance
+    #[cfg(target_os = "linux")]
+    crate::util::is_wsl_1();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

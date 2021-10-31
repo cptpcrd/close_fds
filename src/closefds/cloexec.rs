@@ -99,3 +99,13 @@ fn set_cloexec_rest(fd: libc::c_int, fditer: crate::FdIter) {
         util::set_cloexec(fd);
     }
 }
+
+#[inline]
+pub(crate) fn probe() {
+    // If we specify an invalid range (like in close.rs), we won't know whether EINVAL means
+    // "invalid flags" or "invalid file descriptor range". So we have to make a call like this
+    // (which *should* do nothing; it shouldn't be possible to open and use file descriptors in
+    // the vicinity of 2^32).
+    #[cfg(target_os = "linux")]
+    let _ = set_cloexec_range(libc::c_uint::MAX, libc::c_uint::MAX);
+}

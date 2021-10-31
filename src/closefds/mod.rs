@@ -203,3 +203,9 @@ pub fn set_fds_cloexec_threadsafe(minfd: libc::c_int, keep_fds: &[libc::c_int]) 
 pub unsafe fn close_open_fds(minfd: libc::c_int, keep_fds: &[libc::c_int]) {
     CloseFdsBuilder::new().keep_fds(keep_fds).closefrom(minfd)
 }
+
+#[inline]
+pub(crate) fn probe() {
+    close::probe();
+    cloexec::probe();
+}

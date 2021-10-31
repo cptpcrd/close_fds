@@ -435,31 +435,33 @@ fn large_open_fds_test(
 fn run_tests() {
     // Run all tests here because these tests can't be run in parallel
 
-    for (fs, threadsafe) in [(true, true), (true, false), (false, true), (false, false)]
-        .iter()
-        .cloned()
-    {
-        let mut builder = close_fds::CloseFdsBuilder::new();
-        builder.allow_filesystem(fs).threadsafe(threadsafe);
+    for _ in 0..3 {
+        for (fs, threadsafe) in [(true, true), (true, false), (false, true), (false, false)]
+            .iter()
+            .cloned()
+        {
+            let mut builder = close_fds::CloseFdsBuilder::new();
+            builder.allow_filesystem(fs).threadsafe(threadsafe);
 
-        run_basic_test(iter_open_fds_test, builder.clone());
+            run_basic_test(iter_open_fds_test, builder.clone());
+            run_basic_test(iter_possible_fds_test, builder.clone());
+            run_basic_test(close_fds_test, builder.clone());
 
-        run_basic_test(iter_possible_fds_test, builder.clone());
+            run_basic_test(close_fds_keep1_test, builder.clone());
+            run_basic_test(close_fds_keep2_test, builder.clone());
+            run_basic_test(close_fds_keep3_test, builder.clone());
 
-        run_basic_test(close_fds_test, builder.clone());
+            large_open_fds_test(|keep_fds| keep_fds.sort_unstable(), builder.clone());
+            large_open_fds_test(|_keep_fds| (), builder.clone());
+            large_open_fds_test(
+                |keep_fds| {
+                    keep_fds.sort_unstable_by(|a, b| ((a + b) % 5).cmp(&3));
+                },
+                builder.clone(),
+            );
+        }
 
-        run_basic_test(close_fds_keep1_test, builder.clone());
-        run_basic_test(close_fds_keep2_test, builder.clone());
-        run_basic_test(close_fds_keep3_test, builder.clone());
-
-        large_open_fds_test(|keep_fds| keep_fds.sort_unstable(), builder.clone());
-        large_open_fds_test(|_keep_fds| (), builder.clone());
-        large_open_fds_test(
-            |keep_fds| {
-                keep_fds.sort_unstable_by(|a, b| ((a + b) % 5).cmp(&3));
-            },
-            builder.clone(),
-        );
+        close_fds::probe_features();
     }
 
     unsafe {
