@@ -35,7 +35,7 @@ pub fn simplify_keep_fds<'a>(
         // need to call iter_fds() in the first place.
 
         while let Some((first, rest)) = keep_fds.split_first() {
-            match first.cmp(&minfd) {
+            match first.cmp(minfd) {
                 // keep_fds[0] > minfd
                 // No further simplification can be done
                 Ordering::Greater => break,
