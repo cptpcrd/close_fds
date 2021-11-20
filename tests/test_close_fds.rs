@@ -489,7 +489,6 @@ fn run_tests() {
     );
 }
 
-#[cfg(not(tarpaulin))] // Breaks when running under some versions of tarpaulin
 #[test]
 fn run_no_fds_tests() {
     // This is an edge case of the fused tests. The case where *no* file descriptors are open
