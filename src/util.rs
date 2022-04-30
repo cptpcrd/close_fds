@@ -101,7 +101,7 @@ pub fn is_wsl_1() -> bool {
                 .release
                 .iter()
                 .position(|c| *c == 0)
-                .unwrap_or_else(|| uname.release.len());
+                .unwrap_or(uname.release.len());
 
             // uname.release is an array of `libc::c_char`s. `libc::c_char` may be either a u8 or
             // an i8, so unfortunately we have to use unsafe operations to get a reference as a
@@ -256,12 +256,9 @@ mod tests {
 
     #[test]
     fn test_simplify_keep_fds() {
-        let mut keep_fds: &[libc::c_int];
-        let mut minfd;
-
         // Here, the entire list can be emptied without changing minfd
-        keep_fds = &[0, 1, 2];
-        minfd = 3;
+        let mut keep_fds: &[libc::c_int] = &[0, 1, 2];
+        let mut minfd = 3;
         assert_eq!(simplify_keep_fds(keep_fds, true, &mut minfd), &[]);
         assert_eq!(minfd, 3);
 

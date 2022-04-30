@@ -196,9 +196,7 @@ fn close_fds_test(
     fd3: libc::c_int,
     builder: close_fds::CloseFdsBuilder,
 ) {
-    let mut fds: Vec<libc::c_int>;
-
-    fds = close_fds::iter_open_fds(fd1).collect();
+    let mut fds: Vec<_> = close_fds::iter_open_fds(fd1).collect();
     check_sorted(&fds);
     assert!(fds.contains(&fd1));
     assert!(fds.contains(&fd2));
@@ -222,9 +220,7 @@ fn close_fds_keep1_test(
     fd3: libc::c_int,
     builder: close_fds::CloseFdsBuilder,
 ) {
-    let mut fds: Vec<libc::c_int>;
-
-    fds = close_fds::iter_open_fds(fd1).collect();
+    let mut fds: Vec<_> = close_fds::iter_open_fds(fd1).collect();
     check_sorted(&fds);
     assert!(fds.contains(&fd1));
     assert!(fds.contains(&fd2));
@@ -247,9 +243,7 @@ fn close_fds_keep2_test(
     fd3: libc::c_int,
     builder: close_fds::CloseFdsBuilder,
 ) {
-    let mut fds: Vec<libc::c_int>;
-
-    fds = close_fds::iter_open_fds(fd1).collect();
+    let mut fds: Vec<_> = close_fds::iter_open_fds(fd1).collect();
     check_sorted(&fds);
     assert!(fds.contains(&fd1));
     assert!(fds.contains(&fd2));
@@ -272,9 +266,7 @@ fn close_fds_keep3_test(
     fd3: libc::c_int,
     builder: close_fds::CloseFdsBuilder,
 ) {
-    let mut fds: Vec<libc::c_int>;
-
-    fds = close_fds::iter_open_fds(fd1).collect();
+    let mut fds: Vec<_> = close_fds::iter_open_fds(fd1).collect();
     check_sorted(&fds);
     assert!(fds.contains(&fd1));
     assert!(fds.contains(&fd2));
@@ -324,11 +316,9 @@ fn large_open_fds_test(
         assert_eq!(is_fd_cloexec(fd), None);
     }
 
-    let mut cur_open_fds: Vec<libc::c_int>;
-
     // Check that our expectations of which should be open and which
     // should be closed are correct
-    cur_open_fds = close_fds::iter_open_fds(lowfd).collect();
+    let mut cur_open_fds: Vec<_> = close_fds::iter_open_fds(lowfd).collect();
     check_sorted(&cur_open_fds);
     for fd in openfds.iter() {
         assert_eq!(is_fd_cloexec(*fd), Some(true));
