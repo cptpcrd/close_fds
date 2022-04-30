@@ -27,7 +27,7 @@ task:
     CODECOV_TOKEN: ENCRYPTED[d63ddb4bf9c049623ccbacc93fec2d356473ad31202cfa83ded904b6720b8c3e59167a4a0fe88e423e66cc7ac21797f6]
 
   install_script:
-    - pkg install -y npm jq curl kcov bash
+    - pkg install -y npm jq curl kcov bash git
     - curl -sSf https://sh.rustup.rs -o rustup.sh
     - sh rustup.sh -y --profile default --default-toolchain $TOOLCHAIN
   build_script:
