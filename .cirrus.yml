@@ -61,8 +61,6 @@ task:
       done
   coverage_collect_upload_script:
     - kcov --merge coverage-merged/ coverage-no-fdescfs/ coverage-fdescfs/
-    - curl -sSfL "$(curl -sSf 'https://api.github.com/repos/codecov/uploader/releases/latest' | jq -r '.tarball_url')" -o codecov-uploader.tar.gz
-    - tar -xzf codecov-uploader.tar.gz
-    - mv codecov-uploader-*/ codecov-uploader/
+    - git clone https://github.com/codecov/uploader.git codecov-uploader -b "$(curl -sSf 'https://api.github.com/repos/codecov/uploader/releases/latest' | jq -r '.tag_name')"
     - (cd codecov-uploader && npm install && npm run build)
     - node codecov-uploader/dist/bin/codecov -e OS,TOOLCHAIN -n "$FREEBSD_IMAGE-$TOOLCHAIN" -Z -f coverage-merged/kcov-merged/cobertura.xml
